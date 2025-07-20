@@ -1,4 +1,4 @@
-# outlasttrialsstats.com Contribute-Data Program
+# OutlastTrialsStats Contribute-Data Program
 
 🎮 **Automatic data collector for OutlastTrials** - Collects player IDs from game logs to scan for new players on [outlasttrialsstats.com](https://outlasttrialsstats.com)
 
