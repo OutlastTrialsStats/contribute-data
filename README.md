@@ -1,6 +1,8 @@
-# OutlastTrials Stats Monitor
+# outlasttrialsstats.com Contribute-Data Program
 
 🎮 **Automatic data collector for OutlastTrials** - Collects player IDs from game logs to scan for new players on [outlasttrialsstats.com](https://outlasttrialsstats.com)
+
+We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials
 
 ## 🚀 Installation
 
@@ -30,7 +32,3 @@ The program monitors your OutlastTrials game logs and extracts player IDs from m
 
 - Python 3.6+
 - OutlastTrials game installed
-
-## 📝 License
-
-MIT License - Feel free to modify and distribute
