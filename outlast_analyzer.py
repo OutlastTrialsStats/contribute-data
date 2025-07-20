@@ -27,7 +27,6 @@ class OutlastTrialsMonitor:
         self.autostart_key = "OutlastTrialsMonitor"
         self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
 
-        # Regex patterns
         self.auth_pattern = re.compile(
             r"Client authentication succeeded\. Profile ID: ([0-9a-f-]{36})\. Session ID: ([0-9a-f-]{36})")
         self.player_pattern = re.compile(
@@ -287,7 +286,7 @@ class OutlastTrialsMonitor:
 
     def run(self):
         """Main program"""
-        # Automatic setup
+        
         self.setup_engine_config()
         self.setup_autostart()
 
@@ -314,15 +313,11 @@ class OutlastTrialsMonitor:
 
 
 def main():
-    """Main function - simple and user-friendly"""
-
-    # Silent mode for autostart
     if len(sys.argv) > 1 and "--silent" in sys.argv:
         monitor = OutlastTrialsMonitor(silent_mode=True)
         monitor.run()
         return
-
-    # Show help
+        
     if len(sys.argv) > 1 and ("--help" in sys.argv or "-h" in sys.argv):
         print("OutlastTrials Stats Contributor")
         print("")
@@ -337,7 +332,6 @@ def main():
         print("That's it! No further configuration needed.")
         return
 
-    # Main program - super simple
     print("=" * 60)
     print("    🎮 OutlastTrials Stats Contributor 🎮")
     print("=" * 60)
