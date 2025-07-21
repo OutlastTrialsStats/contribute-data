@@ -8,7 +8,6 @@ import sys
 import winreg
 from pathlib import Path
 from datetime import datetime
-import configparser
 from typing import Optional
 
 
@@ -20,13 +19,12 @@ class OutlastTrialsMonitor:
         self.processed_players = set()
         self.last_log_position = {}
         self.current_log_file = None
-        self.config_path = Path(
-            os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Config" / "WindowsClient" / "Engine.ini"
         self.logs_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
         self.api_url = "https://outlasttrialsstats.com/api/profile/contribute"
         self.autostart_key = "OutlastTrialsMonitor"
         self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
 
+        # Regex patterns
         self.auth_pattern = re.compile(
             r"Client authentication succeeded\. Profile ID: ([0-9a-f-]{36})\. Session ID: ([0-9a-f-]{36})")
         self.player_pattern = re.compile(
@@ -67,61 +65,6 @@ class OutlastTrialsMonitor:
             if not self.silent_mode:
                 self.log_message(f"❌ Error setting up autostart: {e}")
             return False
-
-    def setup_engine_config(self):
-        """Automatically configure Engine.ini"""
-        try:
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
-
-            config = configparser.ConfigParser()
-            config.optionxform = str
-
-            if self.config_path.exists():
-                config.read(self.config_path)
-
-            changes_made = False
-
-            # [Core.Log] section
-            if 'Core.Log' not in config:
-                config.add_section('Core.Log')
-                changes_made = True
-
-            core_log_settings = {
-                'LogHttp': 'VeryVerbose',
-                'LogConfigInfo': 'VeryVerbose',
-                'LogConfig': 'VeryVerbose'
-            }
-
-            for key, value in core_log_settings.items():
-                if key not in config['Core.Log'] or config['Core.Log'][key] != value:
-                    config['Core.Log'][key] = value
-                    changes_made = True
-
-            # [Core.Log.Shipping] section
-            if 'Core.Log.Shipping' not in config:
-                config.add_section('Core.Log.Shipping')
-                changes_made = True
-
-            shipping_log_settings = {
-                'AsyncOperationLogs': 'VeryVerbose',
-                'OnlineCoreLogs': 'VeryVerbose',
-                'OnlineCoreHttpLogs': 'VeryVerbose'
-            }
-
-            for key, value in shipping_log_settings.items():
-                if key not in config['Core.Log.Shipping'] or config['Core.Log.Shipping'][key] != value:
-                    config['Core.Log.Shipping'][key] = value
-                    changes_made = True
-
-            if changes_made:
-                with open(self.config_path, 'w') as configfile:
-                    config.write(configfile)
-                if not self.silent_mode:
-                    self.log_message("✅ Game configuration updated automatically")
-
-        except Exception as e:
-            if not self.silent_mode:
-                self.log_message(f"❌ Error configuring game settings: {e}")
 
     def is_outlast_running(self) -> bool:
         """Check if OutlastTrials is running"""
@@ -275,8 +218,6 @@ class OutlastTrialsMonitor:
         self.last_log_position.clear()
         self.current_log_file = None
 
-        self.setup_engine_config()
-
         self.log_thread = threading.Thread(target=self.monitor_logs, daemon=True)
         self.log_thread.start()
 
@@ -286,8 +227,7 @@ class OutlastTrialsMonitor:
 
     def run(self):
         """Main program"""
-        
-        self.setup_engine_config()
+        # Automatic setup
         self.setup_autostart()
 
         if self.silent_mode:
@@ -313,18 +253,21 @@ class OutlastTrialsMonitor:
 
 
 def main():
+    """Main function - simple and user-friendly"""
+
+    # Silent mode for autostart
     if len(sys.argv) > 1 and "--silent" in sys.argv:
         monitor = OutlastTrialsMonitor(silent_mode=True)
         monitor.run()
         return
-        
+
+    # Show help
     if len(sys.argv) > 1 and ("--help" in sys.argv or "-h" in sys.argv):
         print("OutlastTrials Stats Contributor")
         print("")
         print("Just start the program - everything else happens automatically!")
         print("")
         print("What happens:")
-        print("• Engine.ini is automatically configured")
         print("• Autostart is set up")
         print("• OutlastTrials is monitored")
         print("• Player data is sent")
@@ -332,6 +275,7 @@ def main():
         print("That's it! No further configuration needed.")
         return
 
+    # Main program - super simple
     print("=" * 60)
     print("    🎮 OutlastTrials Stats Contributor 🎮")
     print("=" * 60)
@@ -340,7 +284,6 @@ def main():
     print("from OutlastTrials and sends it to outlasttrialsstats.com")
     print()
     print("🚀 AUTOMATIC SETUP:")
-    print("   ✅ Game configuration will be adjusted")
     print("   ✅ Autostart will be enabled")
     print("   ✅ Monitoring starts automatically")
     print()
