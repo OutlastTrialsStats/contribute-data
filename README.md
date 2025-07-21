@@ -1,8 +1,19 @@
-# OutlastTrialsStats Contribute-Data Program
+# Contribute Program
 
-🎮 **Automatic data collector for OutlastTrials** - Collects player IDs from game logs to scan for new players on [outlasttrialsstats.com](https://outlasttrialsstats.com)
+Help uns to track new players for [outlasttrialsstats.com](https://outlasttrialsstats.com)
 
-We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials
+## 🛠️ What it does
+
+The program monitors your game logs of 'The Outlast Trials'-Game and extracts player IDs from matches you play. These IDs are then sent to outlasttrialsstats.com to help discover and scan new players for the community statistics database.
+
+Note: In the future, we will honor contributors to the program on our website. 🙌
+
+
+## 📋 Requirements
+
+- Python 3.6+
+- OutlastTrials game installed
+
 
 ## 🚀 Installation
 
@@ -24,11 +35,5 @@ We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials
 
 That's it! 🎉
 
-## 🛠️ What it does
 
-The program monitors your OutlastTrials game logs and extracts player IDs from matches you play. These IDs are then sent to outlasttrialsstats.com to help discover and scan new players for the community statistics database.
-
-## 📋 Requirements
-
-- Python 3.6+
-- OutlastTrials game installed
+We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials
