@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - 'outlast_analyzer.py'
       - '.github/workflows/build.yml'
@@ -34,7 +35,7 @@ jobs:
       - name: Get version from Python file
         id: version
         run: |
-          $version = python -c "exec(open('outlast_analyzer.py').read()); print(__version__)"
+          $version = (Select-String -Path "outlast_analyzer.py" -Pattern '__version__ = "(.+)"').Matches.Groups[1].Value
           echo "version=$version" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
