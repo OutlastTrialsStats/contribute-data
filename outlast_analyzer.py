@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+__version__ = "1.1.0"
 
 class OutlastTrialsMonitor:
     def __init__(self, silent_mode=False):
@@ -124,6 +125,8 @@ class OutlastTrialsMonitor:
 
             if response.status_code == 200:
                 self.log_message(f"✅ Player data sent successfully: {profile_id[:8]}...")
+            elif response.status_code == 208:
+                self.log_message(f"ℹ️ Player already known: {profile_id[:8]}...")
             else:
                 self.log_message(f"⚠️ API error (Status {response.status_code})")
 
