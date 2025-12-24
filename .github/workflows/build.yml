@@ -1,0 +1,59 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'outlast_analyzer.py'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'outlast_analyzer.py'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Get version from Python file
+        id: version
+        run: |
+          $version = python -c "exec(open('outlast_analyzer.py').read()); print(__version__)"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build executable
+        run: |
+          pyinstaller --onefile --noconsole --name TOTStatsMonitor outlast_analyzer.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TOTStatsMonitor-v${{ steps.version.outputs.version }}
+          path: dist/TOTStatsMonitor.exe
+          retention-days: 90
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/TOTStatsMonitor.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

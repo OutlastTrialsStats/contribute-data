@@ -6,34 +6,17 @@ Help uns to track new players for [outlasttrialsstats.com](https://outlasttrials
 
 The program monitors your game logs of 'The Outlast Trials'-Game and extracts player IDs from matches you play. These IDs are then sent to outlasttrialsstats.com to help discover and scan new players for the community statistics database.
 
-Note: In the future, we will honor contributors to the program on our website. 🙌
+Note: All contributors will automatically receive an exclusive contributor badge on their profile at outlasttrialsstats.com to honor their support! 🏅
 
+## 🚀 Quick Start (Recommended)
 
-## 📋 Requirements
+**Download the ready-to-use executable - no Python installation required!**
 
-- Python 3.6+
-- OutlastTrials game installed
+1. Go to [Releases](../../releases)
+2. Download the latest `TOTStatsMonitor.exe`
+3. Double-click to run
+4. That's it! 🎉
 
+## ⚠️ Disclaimer
 
-## 🚀 Installation
-
-1. **Download the script**
-   - Download `outlast_analyzer.py` from this repository
-
-2. **Install Python** (if not already installed)
-   - Download Python from [python.org](https://python.org)
-
-3. **Install dependencies**
-   ```bash
-   pip install psutil requests
-   ```
-
-4. **Run the program**
-   ```bash
-   python outlast_analyzer.py
-   ```
-
-That's it! 🎉
-
-
-We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials
+We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials.
