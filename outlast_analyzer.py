@@ -5,7 +5,7 @@ import psutil
 import re
 import requests
 import sys
-import winreg
+# import winreg # lazy loaded to prevent breaking linux compatibility, see `_setup_windows_autostart`
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -20,10 +20,20 @@ class OutlastTrialsMonitor:
         self.processed_players = set()
         self.last_log_position = {}
         self.current_log_file = None
-        self.logs_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
+
+        # checking for windows
+        self.is_windows = sys.platform.startswith('win')
+
+        if self.is_windows:
+            self.logs_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
+            self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
+            self.autostart_key = "OutlastTrialsMonitor" 
+        else:
+            self.logs_path = Path(os.path.expanduser("~")) / ".steam" / "steam" / "steamapps" / "compatdata" / "1304930" / "pfx" / "drive_c" / "users" / "steamuser" / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
+            self.log_file_path = Path(os.path.expanduser("~")) / ".local" / "share" / "OutlastTrialsMonitor" / "monitor.log"
+            Path(self.log_file_path).parent.mkdir(parents=True, exist_ok=True)
+
         self.api_url = "https://outlasttrialsstats.com/api/profile/contribute"
-        self.autostart_key = "OutlastTrialsMonitor"
-        self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
 
         # Regex patterns
         self.auth_pattern = re.compile(
@@ -39,14 +49,19 @@ class OutlastTrialsMonitor:
         if not self.silent_mode:
             print(log_entry)
         else:
-            try:
-                with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                    f.write(log_entry + "\n")
-            except:
-                pass
+            Path(self.log_file_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(self.log_file_path, 'a', encoding='utf-8') as f:
+                f.write(log_entry + "\n")
 
     def setup_autostart(self):
         """Setup autostart"""
+        if self.is_windows:
+            self._setup_windows_autostart()
+        else:
+            self._setup_linux_autostart()
+
+    def _setup_windows_autostart(self):
+        import winreg 
         try:
             script_path = Path(sys.argv[0]).resolve()
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
@@ -64,7 +79,44 @@ class OutlastTrialsMonitor:
             return True
         except Exception as e:
             if not self.silent_mode:
-                self.log_message(f"❌ Error setting up autostart: {e}")
+                self.log_message(f"❌ Error setting up autostart for Windows: {e}")
+            return False
+
+    def _setup_linux_autostart(self):
+        try:
+            script_path = Path(sys.argv[0]).resolve()
+            service_content = f"""[Unit]
+Description=OutlastTrials Monitor
+After=network.target
+
+[Service]
+ExecStart={sys.executable} {script_path} --silent
+Restart=always
+StandardOutput=journal
+StandardError=journal
+Type=simple
+
+[Install]
+WantedBy=default.target
+"""
+            service_dir = Path(os.path.expanduser("~")) / ".config" / "systemd" / "user"
+            service_dir.mkdir(parents=True, exist_ok=True)
+            service_file_path = service_dir / "outlast-trials-monitor.service"
+
+            with open(service_file_path, 'w') as f:
+                f.write(service_content)
+
+            os.system(f"systemctl --user enable {service_file_path.name}")
+            os.system(f"systemctl --user start {service_file_path.name}")
+
+            if not self.silent_mode:
+                self.log_message("✅ Autostart enabled - script will start automatically using systemd")
+                self.log_message("Viewable via: tail -f ~/.local/share/OutlastTrialsMonitor/monitor.log")
+                self.log_message("To disable autostart: systemctl --user disable outlast-trials-monitor.service\n")
+            return True
+        except Exception as e:
+            if not self.silent_mode:
+                self.log_message(f"❌ Error setting up autostart for Linux: {e}")
             return False
 
     def is_outlast_running(self) -> bool:
@@ -239,8 +291,11 @@ class OutlastTrialsMonitor:
             print("🚀 OutlastTrials Monitor is now active!")
             print("📋 The program runs automatically in the background and:")
             print("   • Monitors OutlastTrials automatically")
-            print("   • Sends player data to outlasttrialsstats.com")
-            print("   • Starts automatically with Windows")
+            print(f"   • Sends player data to {self.api_url}")
+            if self.is_windows:
+                print("   • Starts automatically with Windows")
+            else:
+                print("   • Starts automatically with Linux")
             print()
             print("💡 You can close this window - it will continue running in the background")
             print("🔄 After PC restart it will start automatically again")
@@ -271,7 +326,11 @@ def main():
         print("Just start the program - everything else happens automatically!")
         print("")
         print("What happens:")
-        print("• Autostart is set up")
+        tmp_mon = OutlastTrialsMonitor(silent_mode=True) 
+        if tmp_mon.is_windows:
+            print("• Autostart is set up for Windows")
+        else:
+            print("• Autostart is set up for Linux")
         print("• OutlastTrials is monitored")
         print("• Player data is sent")
         print("")
@@ -287,14 +346,17 @@ def main():
     print("from OutlastTrials and sends it to outlasttrialsstats.com")
     print()
     print("🚀 AUTOMATIC SETUP:")
-    print("   ✅ Autostart will be enabled")
+    monitor = OutlastTrialsMonitor()
+    if monitor.is_windows:
+        print("   ✅ Autostart will be enabled for Windows")
+    else:
+        print("   ✅ Autostart will be enabled for Linux")
     print("   ✅ Monitoring starts automatically")
     print()
     print("That's it! No further configuration needed.")
     print("You can play OutlastTrials - everything else happens automatically.")
     print("=" * 60)
 
-    monitor = OutlastTrialsMonitor()
     monitor.run()
 
 
