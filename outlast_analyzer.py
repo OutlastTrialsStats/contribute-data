@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-__version__ = "1.2.0-DEV"
+__version__ = "1.2.0"
 
 class OutlastTrialsMonitor:
     def __init__(self, silent_mode=False):
