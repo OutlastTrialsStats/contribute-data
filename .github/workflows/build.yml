@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Install dependencies
         run: |
@@ -32,16 +32,56 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Get version from Python file
+      - name: Get version and generate Windows version info
         id: version
+        shell: python
         run: |
-          $version = (Select-String -Path "outlast_analyzer.py" -Pattern '__version__ = "(.+)"').Matches.Groups[1].Value
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-        shell: pwsh
+          import re, os
+
+          with open("outlast_analyzer.py") as f:
+              version = re.search(r'__version__ = "(.+)"', f.read()).group(1)
+
+          parts = list(map(int, version.split(".")))
+          while len(parts) < 3:
+              parts.append(0)
+          maj, min_, patch = parts[0], parts[1], parts[2]
+
+          vi = "\n".join([
+              "VSVersionInfo(",
+              "  ffi=FixedFileInfo(",
+              f"    filevers=({maj}, {min_}, {patch}, 0),",
+              f"    prodvers=({maj}, {min_}, {patch}, 0),",
+              "    mask=0x3f,",
+              "    flags=0x0,",
+              "    OS=0x40004,",
+              "    fileType=0x1,",
+              "    subtype=0x0,",
+              "    date=(0, 0)",
+              "  ),",
+              "  kids=[",
+              "    StringFileInfo([",
+              "      StringTable(",
+              "        u'040904B0',",
+              "        [StringStruct(u'CompanyName', u'OutlastTrialsStats'),",
+              "         StringStruct(u'FileDescription', u'OutlastTrials Stats Monitor'),",
+              f"         StringStruct(u'FileVersion', u'{version}'),",
+              "         StringStruct(u'InternalName', u'TOTStatsMonitor'),",
+              "         StringStruct(u'OriginalFilename', u'TOTStatsMonitor.exe'),",
+              "         StringStruct(u'ProductName', u'OutlastTrials Stats Contributor'),",
+              f"         StringStruct(u'ProductVersion', u'{version}')])]),",
+              "    VarFileInfo([VarStruct(u'Translation', [0x0409, 1200])])",
+              "  ])",
+          ])
+
+          with open("version_info.txt", "w") as f:
+              f.write(vi)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={version}\n")
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --noconsole --name TOTStatsMonitor outlast_analyzer.py
+          pyinstaller --onefile --noconsole --name TOTStatsMonitor --version-file version_info.txt outlast_analyzer.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-__version__ = "1.1.0"
+__version__ = "1.2.0-DEV"
 
 class OutlastTrialsMonitor:
     def __init__(self, silent_mode=False):
@@ -66,6 +66,95 @@ class OutlastTrialsMonitor:
             if not self.silent_mode:
                 self.log_message(f"❌ Error setting up autostart: {e}")
             return False
+
+    def remove_autostart(self):
+        """Remove autostart registry entry"""
+        try:
+            key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, self.autostart_key)
+            print("✅ Autostart successfully removed")
+            return True
+        except FileNotFoundError:
+            print("ℹ️ Autostart was not configured")
+            return False
+        except Exception as e:
+            print(f"❌ Error removing autostart: {e}")
+            return False
+
+    def get_autostart_path(self) -> Optional[str]:
+        """Return the exe path stored in the autostart registry entry"""
+        try:
+            key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as key:
+                value, _ = winreg.QueryValueEx(key, self.autostart_key)
+                # Command is: "exe" "script" --silent  OR  "exe" --silent
+                # Extract the last quoted token that ends in .exe or .py
+                import shlex
+                try:
+                    parts = shlex.split(value)
+                    for part in parts:
+                        if part.lower().endswith(('.exe', '.py')):
+                            return part
+                except Exception:
+                    pass
+                return value
+        except FileNotFoundError:
+            return None
+        except Exception:
+            return None
+
+    def print_status(self):
+        """Print autostart and process status"""
+        print("=" * 60)
+        print("    OutlastTrials Monitor - Status")
+        print("=" * 60)
+
+        # Check if monitor process is running
+        monitor_pid = None
+        current_pid = os.getpid()
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if proc.info['pid'] == current_pid:
+                    continue
+                name = proc.info.get('name') or ''
+                cmdline = proc.info.get('cmdline') or []
+                if 'TOTStatsMonitor' in name:
+                    monitor_pid = proc.info['pid']
+                    break
+                if any('outlast_analyzer' in str(arg) for arg in cmdline):
+                    monitor_pid = proc.info['pid']
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        if monitor_pid:
+            print(f"✅ Monitor is RUNNING (PID: {monitor_pid})")
+            print(f"   To stop: end 'TOTStatsMonitor.exe' in Task Manager")
+        else:
+            print("❌ Monitor is NOT running")
+
+        print()
+
+        # Check autostart
+        stored_path = self.get_autostart_path()
+        if stored_path:
+            if os.path.exists(stored_path):
+                print(f"✅ Autostart: configured (path valid)")
+                print(f"   Path: {stored_path}")
+            else:
+                print(f"⚠️  Autostart: configured but path INVALID")
+                print(f"   Configured: {stored_path}")
+                print(f"   The file was moved or deleted!")
+                print(f"   → Run the program again to fix the path automatically")
+                print(f"   → Or run with --uninstall to remove the broken entry")
+        else:
+            print("❌ Autostart: not configured")
+
+        print()
+        print("Commands:  --uninstall   remove autostart")
+        print("           --status      show this info")
+        print("=" * 60)
 
     def is_outlast_running(self) -> bool:
         """Check if OutlastTrials is running"""
@@ -230,23 +319,8 @@ class OutlastTrialsMonitor:
 
     def run(self):
         """Main program"""
-        # Automatic setup
         self.setup_autostart()
-
-        if self.silent_mode:
-            self.log_message("🚀 OutlastTrials Monitor started (background mode)")
-        else:
-            print("🚀 OutlastTrials Monitor is now active!")
-            print("📋 The program runs automatically in the background and:")
-            print("   • Monitors OutlastTrials automatically")
-            print("   • Sends player data to outlasttrialsstats.com")
-            print("   • Starts automatically with Windows")
-            print()
-            print("💡 You can close this window - it will continue running in the background")
-            print("🔄 After PC restart it will start automatically again")
-            print()
-            print("📊 Status will be shown here...")
-            print("-" * 60)
+        self.log_message("🚀 OutlastTrials Monitor started")
 
         try:
             self.monitor_game_process()
@@ -264,6 +338,21 @@ def main():
         monitor.run()
         return
 
+    # Uninstall
+    if len(sys.argv) > 1 and "--uninstall" in sys.argv:
+        monitor = OutlastTrialsMonitor()
+        monitor.remove_autostart()
+        print()
+        print("To fully uninstall, delete the TOTStatsMonitor.exe file.")
+        print("If the monitor is still running, end it in Task Manager.")
+        return
+
+    # Status
+    if len(sys.argv) > 1 and "--status" in sys.argv:
+        monitor = OutlastTrialsMonitor()
+        monitor.print_status()
+        return
+
     # Show help
     if len(sys.argv) > 1 and ("--help" in sys.argv or "-h" in sys.argv):
         print("OutlastTrials Stats Contributor")
@@ -275,24 +364,12 @@ def main():
         print("• OutlastTrials is monitored")
         print("• Player data is sent")
         print("")
+        print("Flags:")
+        print("  --status     Show whether monitor is running and autostart is configured")
+        print("  --uninstall  Remove autostart registry entry")
+        print("")
         print("That's it! No further configuration needed.")
         return
-
-    # Main program - super simple
-    print("=" * 60)
-    print("    🎮 OutlastTrials Stats Contributor 🎮")
-    print("=" * 60)
-    print()
-    print("Welcome! This program automatically collects player data")
-    print("from OutlastTrials and sends it to outlasttrialsstats.com")
-    print()
-    print("🚀 AUTOMATIC SETUP:")
-    print("   ✅ Autostart will be enabled")
-    print("   ✅ Monitoring starts automatically")
-    print()
-    print("That's it! No further configuration needed.")
-    print("You can play OutlastTrials - everything else happens automatically.")
-    print("=" * 60)
 
     monitor = OutlastTrialsMonitor()
     monitor.run()
