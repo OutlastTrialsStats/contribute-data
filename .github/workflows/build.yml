@@ -38,7 +38,7 @@ jobs:
         run: |
           import re, os
 
-          with open("outlast_analyzer.py") as f:
+          with open("outlast_analyzer.py", encoding="utf-8") as f:
               version = re.search(r'__version__ = "(.+)"', f.read()).group(1)
 
           parts = list(map(int, version.split(".")))
