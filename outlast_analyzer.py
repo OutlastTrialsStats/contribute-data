@@ -1,5 +1,7 @@
+import collections
 import os
 import time
+import tkinter as tk
 import threading
 import psutil
 import re
@@ -9,6 +11,9 @@ import winreg
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+
+import pystray
+from PIL import Image, ImageDraw
 
 __version__ = "1.2.0"
 
@@ -25,6 +30,10 @@ class OutlastTrialsMonitor:
         self.autostart_key = "OutlastTrialsMonitor"
         self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
 
+        self.tray_icon = None
+        self.log_buffer = collections.deque(maxlen=500)
+        self.console_window = None
+
         # Regex patterns
         self.auth_pattern = re.compile(
             r"Client authentication succeeded\. Profile ID: ([0-9a-f-]{36})\. Session ID: ([0-9a-f-]{36})")
@@ -35,6 +44,7 @@ class OutlastTrialsMonitor:
         """Logging with timestamp"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
+        self.log_buffer.append(log_entry)
 
         if not self.silent_mode:
             print(log_entry)
@@ -299,6 +309,128 @@ class OutlastTrialsMonitor:
                 self.log_message(f"Error monitoring game process: {e}")
                 time.sleep(10)
 
+    def _get_icon_path(self):
+        """Get the path to the icon.ico file (works both in dev and PyInstaller bundle)"""
+        if getattr(sys, '_MEIPASS', None):
+            return Path(sys._MEIPASS) / "icon.ico"
+        return Path(__file__).parent / "icon.ico"
+
+    def _create_tray_icon_image(self):
+        """Load the tray icon from the bundled icon file"""
+        icon_path = self._get_icon_path()
+        if icon_path.exists():
+            return Image.open(icon_path)
+        # Fallback if icon file is missing
+        size = 64
+        img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse([4, 4, size - 4, size - 4], fill=(180, 180, 180, 255))
+        draw.text((size // 2 - 8, size // 2 - 10), "OT", fill=(255, 255, 255, 255))
+        return img
+
+    def _update_tray_status(self):
+        """Update tray tooltip to reflect current monitoring state"""
+        if self.tray_icon:
+            status = "Monitoring active" if self.is_running else "Waiting for game"
+            self.tray_icon.title = f"TOTStatsMonitor - {status}"
+
+    def _open_console(self):
+        """Open a tkinter log console window"""
+        if self.console_window is not None:
+            return
+
+        self.console_window = tk.Tk()
+        self.console_window.title("TOTStatsMonitor - Console")
+        self.console_window.geometry("700x400")
+        self.console_window.protocol("WM_DELETE_WINDOW", self._close_console)
+
+        # Set window icon
+        icon_path = self._get_icon_path()
+        if icon_path.exists():
+            try:
+                self.console_window.iconbitmap(str(icon_path))
+            except Exception:
+                pass
+
+        text = tk.Text(self.console_window, bg="#1e1e1e", fg="#cccccc", font=("Consolas", 10),
+                       state=tk.DISABLED, wrap=tk.WORD)
+        scrollbar = tk.Scrollbar(self.console_window, command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(fill=tk.BOTH, expand=True)
+        self._console_text = text
+
+        # Fill with existing log buffer
+        text.configure(state=tk.NORMAL)
+        for entry in self.log_buffer:
+            text.insert(tk.END, entry + "\n")
+        text.see(tk.END)
+        text.configure(state=tk.DISABLED)
+
+        self._console_last_count = len(self.log_buffer)
+        self._poll_console_log()
+        self.console_window.mainloop()
+
+    def _poll_console_log(self):
+        """Poll for new log entries and append to console"""
+        if self.console_window is None:
+            return
+        current_count = len(self.log_buffer)
+        if current_count > self._console_last_count:
+            new_entries = list(self.log_buffer)[self._console_last_count:]
+            self._console_text.configure(state=tk.NORMAL)
+            for entry in new_entries:
+                self._console_text.insert(tk.END, entry + "\n")
+            self._console_text.see(tk.END)
+            self._console_text.configure(state=tk.DISABLED)
+            self._console_last_count = current_count
+        self.console_window.after(500, self._poll_console_log)
+
+    def _close_console(self):
+        """Close the console window"""
+        if self.console_window:
+            self.console_window.destroy()
+            self.console_window = None
+
+    def _on_tray_console(self, icon, item):
+        """Handle console open from tray menu"""
+        threading.Thread(target=self._open_console, daemon=True).start()
+
+    def _on_tray_uninstall(self, icon, item):
+        """Handle uninstall from tray menu"""
+        self.remove_autostart()
+        self.log_message("🗑️ Autostart removed. Shutting down...")
+        self.stop_monitoring()
+        icon.stop()
+
+    def _on_tray_exit(self, icon, item):
+        """Handle exit from tray menu"""
+        self.log_message("🛑 Monitor is shutting down...")
+        self.stop_monitoring()
+        icon.stop()
+
+    def _setup_tray_icon(self):
+        """Setup and run the system tray icon"""
+        menu = pystray.Menu(
+            pystray.MenuItem(
+                lambda text: f"Status: {'Monitoring' if self.is_running else 'Waiting'}",
+                None,
+                enabled=False
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Console", self._on_tray_console),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Uninstall", self._on_tray_uninstall),
+            pystray.MenuItem("Exit", self._on_tray_exit)
+        )
+        self.tray_icon = pystray.Icon(
+            "TOTStatsMonitor",
+            self._create_tray_icon_image(),
+            "TOTStatsMonitor - Waiting for game",
+            menu
+        )
+        self.tray_icon.run()
+
     def start_monitoring(self):
         """Start monitoring"""
         if self.is_running:
@@ -312,18 +444,25 @@ class OutlastTrialsMonitor:
 
         self.log_thread = threading.Thread(target=self.monitor_logs, daemon=True)
         self.log_thread.start()
+        self._update_tray_status()
 
     def stop_monitoring(self):
         """Stop monitoring"""
         self.is_running = False
+        self._update_tray_status()
 
     def run(self):
         """Main program"""
         self.setup_autostart()
         self.log_message("🚀 OutlastTrials Monitor started")
 
+        # Start game process monitor in background thread
+        game_thread = threading.Thread(target=self.monitor_game_process, daemon=True)
+        game_thread.start()
+
+        # Run tray icon on main thread (required by Windows)
         try:
-            self.monitor_game_process()
+            self._setup_tray_icon()
         except KeyboardInterrupt:
             self.log_message("🛑 Monitor is shutting down...")
             self.stop_monitoring()
