@@ -1,5 +1,7 @@
 import collections
 import os
+import queue
+import shlex
 import time
 import tkinter as tk
 import threading
@@ -32,7 +34,9 @@ class OutlastTrialsMonitor:
 
         self.tray_icon = None
         self.log_buffer = collections.deque(maxlen=500)
+        self.log_counter = 0
         self.console_window = None
+        self._ui_queue = queue.Queue()
 
         # Regex patterns
         self.auth_pattern = re.compile(
@@ -44,7 +48,8 @@ class OutlastTrialsMonitor:
         """Logging with timestamp"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
-        self.log_buffer.append(log_entry)
+        self.log_counter += 1
+        self.log_buffer.append((self.log_counter, log_entry))
 
         if not self.silent_mode:
             print(log_entry)
@@ -52,29 +57,32 @@ class OutlastTrialsMonitor:
             try:
                 with open(self.log_file_path, 'a', encoding='utf-8') as f:
                     f.write(log_entry + "\n")
-            except:
+            except Exception:
                 pass
 
     def setup_autostart(self):
         """Setup autostart"""
         try:
-            script_path = Path(sys.argv[0]).resolve()
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+            if getattr(sys, 'frozen', False):
+                # Running as PyInstaller exe
+                command = f'"{sys.executable}" --silent'
+            else:
+                # Running as Python script
+                script_path = Path(sys.argv[0]).resolve()
                 python_exe = sys.executable.replace("python.exe", "pythonw.exe")
                 if not os.path.exists(python_exe):
                     python_exe = sys.executable
-
                 command = f'"{python_exe}" "{script_path}" --silent'
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.SetValueEx(key, self.autostart_key, 0, winreg.REG_SZ, command)
 
-            if not self.silent_mode:
-                self.log_message("✅ Autostart enabled - script will start automatically with Windows")
+            self.log_message("✅ Autostart enabled - will start automatically with Windows")
             return True
         except Exception as e:
-            if not self.silent_mode:
-                self.log_message(f"❌ Error setting up autostart: {e}")
+            self.log_message(f"❌ Error setting up autostart: {e}")
             return False
 
     def remove_autostart(self):
@@ -83,13 +91,13 @@ class OutlastTrialsMonitor:
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.DeleteValue(key, self.autostart_key)
-            print("✅ Autostart successfully removed")
+            self.log_message("✅ Autostart successfully removed")
             return True
         except FileNotFoundError:
-            print("ℹ️ Autostart was not configured")
+            self.log_message("ℹ️ Autostart was not configured")
             return False
         except Exception as e:
-            print(f"❌ Error removing autostart: {e}")
+            self.log_message(f"❌ Error removing autostart: {e}")
             return False
 
     def get_autostart_path(self) -> Optional[str]:
@@ -98,9 +106,7 @@ class OutlastTrialsMonitor:
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as key:
                 value, _ = winreg.QueryValueEx(key, self.autostart_key)
-                # Command is: "exe" "script" --silent  OR  "exe" --silent
-                # Extract the last quoted token that ends in .exe or .py
-                import shlex
+                # Command is: "exe" --silent  OR  "exe" "script" --silent
                 try:
                     parts = shlex.split(value)
                     for part in parts:
@@ -281,10 +287,6 @@ class OutlastTrialsMonitor:
                             self.last_log_position[file_key] = 0
 
                     self.process_log_file(self.current_log_file)
-                else:
-                    if not self.silent_mode:
-                        self.log_message("⚠️ No log files found - play OutlastTrials to generate logs")
-
                 time.sleep(15)
 
             except Exception as e:
@@ -335,7 +337,7 @@ class OutlastTrialsMonitor:
             self.tray_icon.title = f"TOTStatsMonitor - {status}"
 
     def _open_console(self):
-        """Open a tkinter log console window"""
+        """Open a tkinter log console window (must be called on main thread)"""
         if self.console_window is not None:
             return
 
@@ -362,29 +364,25 @@ class OutlastTrialsMonitor:
 
         # Fill with existing log buffer
         text.configure(state=tk.NORMAL)
-        for entry in self.log_buffer:
+        for _, entry in self.log_buffer:
             text.insert(tk.END, entry + "\n")
         text.see(tk.END)
         text.configure(state=tk.DISABLED)
 
-        self._console_last_count = len(self.log_buffer)
-        self._poll_console_log()
-        self.console_window.mainloop()
+        self._console_last_id = self.log_counter
 
     def _poll_console_log(self):
         """Poll for new log entries and append to console"""
         if self.console_window is None:
             return
-        current_count = len(self.log_buffer)
-        if current_count > self._console_last_count:
-            new_entries = list(self.log_buffer)[self._console_last_count:]
+        new_entries = [(i, e) for i, e in self.log_buffer if i > self._console_last_id]
+        if new_entries:
             self._console_text.configure(state=tk.NORMAL)
-            for entry in new_entries:
+            for i, entry in new_entries:
                 self._console_text.insert(tk.END, entry + "\n")
+                self._console_last_id = i
             self._console_text.see(tk.END)
             self._console_text.configure(state=tk.DISABLED)
-            self._console_last_count = current_count
-        self.console_window.after(500, self._poll_console_log)
 
     def _close_console(self):
         """Close the console window"""
@@ -394,20 +392,18 @@ class OutlastTrialsMonitor:
 
     def _on_tray_console(self, icon, item):
         """Handle console open from tray menu"""
-        threading.Thread(target=self._open_console, daemon=True).start()
+        self._ui_queue.put("open_console")
 
     def _on_tray_uninstall(self, icon, item):
         """Handle uninstall from tray menu"""
         self.remove_autostart()
         self.log_message("🗑️ Autostart removed. Shutting down...")
-        self.stop_monitoring()
-        icon.stop()
+        self._ui_queue.put("quit")
 
     def _on_tray_exit(self, icon, item):
         """Handle exit from tray menu"""
         self.log_message("🛑 Monitor is shutting down...")
-        self.stop_monitoring()
-        icon.stop()
+        self._ui_queue.put("quit")
 
     def _setup_tray_icon(self):
         """Setup and run the system tray icon"""
@@ -460,12 +456,41 @@ class OutlastTrialsMonitor:
         game_thread = threading.Thread(target=self.monitor_game_process, daemon=True)
         game_thread.start()
 
-        # Run tray icon on main thread (required by Windows)
+        # Start tray icon in background thread
+        tray_thread = threading.Thread(target=self._setup_tray_icon, daemon=True)
+        tray_thread.start()
+
+        # Main thread: handle UI events (tkinter must run here)
         try:
-            self._setup_tray_icon()
+            self._main_loop()
         except KeyboardInterrupt:
-            self.log_message("🛑 Monitor is shutting down...")
-            self.stop_monitoring()
+            pass
+        self.stop_monitoring()
+        if self.tray_icon:
+            self.tray_icon.stop()
+
+    def _main_loop(self):
+        """Main thread loop — processes UI queue and drives tkinter"""
+        while True:
+            # Process queue commands
+            try:
+                command = self._ui_queue.get(timeout=0.5)
+                if command == "open_console":
+                    self._open_console()
+                elif command == "quit":
+                    self._close_console()
+                    return
+            except queue.Empty:
+                pass
+
+            # Drive tkinter event loop if console is open
+            if self.console_window is not None:
+                try:
+                    self._poll_console_log()
+                    self.console_window.update()
+                except tk.TclError:
+                    # Window was destroyed externally
+                    self.console_window = None
 
 
 def main():
