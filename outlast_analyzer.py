@@ -1,7 +1,8 @@
 import collections
 import os
 import queue
-import shlex
+import shutil
+import subprocess
 import time
 import tkinter as tk
 import threading
@@ -19,6 +20,31 @@ from PIL import Image, ImageDraw
 
 __version__ = "1.2.0"
 
+INSTALL_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "TOTStatsMonitor"
+INSTALL_EXE = INSTALL_DIR / "TOTStatsMonitor.exe"
+
+
+def is_installed_copy() -> bool:
+    """Check if we are running from the install directory"""
+    if not getattr(sys, 'frozen', False):
+        return False
+    return Path(sys.executable).resolve() == INSTALL_EXE.resolve()
+
+
+def ensure_installed():
+    """Copy exe to install dir and relaunch from there. Returns True if relaunched."""
+    if not getattr(sys, 'frozen', False) or is_installed_copy():
+        return False
+
+    INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+    src = Path(sys.executable)
+    shutil.copy2(src, INSTALL_EXE)
+
+    # Relaunch from installed location with same arguments
+    subprocess.Popen([str(INSTALL_EXE)] + sys.argv[1:])
+    return True
+
+
 class OutlastTrialsMonitor:
     def __init__(self, silent_mode=False):
         self.is_running = False
@@ -30,7 +56,7 @@ class OutlastTrialsMonitor:
         self.logs_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
         self.api_url = "https://outlasttrialsstats.com/api/profile/contribute"
         self.autostart_key = "OutlastTrialsMonitor"
-        self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
+        self.log_file_path = INSTALL_DIR / "monitor.log"
 
         self.tray_icon = None
         self.log_buffer = collections.deque(maxlen=500)
@@ -61,15 +87,13 @@ class OutlastTrialsMonitor:
                 pass
 
     def setup_autostart(self):
-        """Setup autostart"""
+        """Setup autostart pointing to the installed exe"""
         try:
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 
             if getattr(sys, 'frozen', False):
-                # Running as PyInstaller exe
-                command = f'"{sys.executable}" --silent'
+                command = f'"{INSTALL_EXE}" --silent'
             else:
-                # Running as Python script
                 script_path = Path(sys.argv[0]).resolve()
                 python_exe = sys.executable.replace("python.exe", "pythonw.exe")
                 if not os.path.exists(python_exe):
@@ -99,78 +123,6 @@ class OutlastTrialsMonitor:
         except Exception as e:
             self.log_message(f"❌ Error removing autostart: {e}")
             return False
-
-    def get_autostart_path(self) -> Optional[str]:
-        """Return the exe path stored in the autostart registry entry"""
-        try:
-            key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as key:
-                value, _ = winreg.QueryValueEx(key, self.autostart_key)
-                # Command is: "exe" --silent  OR  "exe" "script" --silent
-                try:
-                    parts = shlex.split(value)
-                    for part in parts:
-                        if part.lower().endswith(('.exe', '.py')):
-                            return part
-                except Exception:
-                    pass
-                return value
-        except FileNotFoundError:
-            return None
-        except Exception:
-            return None
-
-    def print_status(self):
-        """Print autostart and process status"""
-        print("=" * 60)
-        print("    OutlastTrials Monitor - Status")
-        print("=" * 60)
-
-        # Check if monitor process is running
-        monitor_pid = None
-        current_pid = os.getpid()
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-            try:
-                if proc.info['pid'] == current_pid:
-                    continue
-                name = proc.info.get('name') or ''
-                cmdline = proc.info.get('cmdline') or []
-                if 'TOTStatsMonitor' in name:
-                    monitor_pid = proc.info['pid']
-                    break
-                if any('outlast_analyzer' in str(arg) for arg in cmdline):
-                    monitor_pid = proc.info['pid']
-                    break
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-
-        if monitor_pid:
-            print(f"✅ Monitor is RUNNING (PID: {monitor_pid})")
-            print(f"   To stop: end 'TOTStatsMonitor.exe' in Task Manager")
-        else:
-            print("❌ Monitor is NOT running")
-
-        print()
-
-        # Check autostart
-        stored_path = self.get_autostart_path()
-        if stored_path:
-            if os.path.exists(stored_path):
-                print(f"✅ Autostart: configured (path valid)")
-                print(f"   Path: {stored_path}")
-            else:
-                print(f"⚠️  Autostart: configured but path INVALID")
-                print(f"   Configured: {stored_path}")
-                print(f"   The file was moved or deleted!")
-                print(f"   → Run the program again to fix the path automatically")
-                print(f"   → Or run with --uninstall to remove the broken entry")
-        else:
-            print("❌ Autostart: not configured")
-
-        print()
-        print("Commands:  --uninstall   remove autostart")
-        print("           --status      show this info")
-        print("=" * 60)
 
     def is_outlast_running(self) -> bool:
         """Check if OutlastTrials is running"""
@@ -394,10 +346,19 @@ class OutlastTrialsMonitor:
         """Handle console open from tray menu"""
         self._ui_queue.put("open_console")
 
+    def _uninstall(self):
+        """Full uninstall: remove autostart, delete installed files"""
+        self.remove_autostart()
+        # Schedule install dir deletion after exit (can't delete running exe)
+        if getattr(sys, 'frozen', False) and INSTALL_DIR.exists():
+            # Use cmd to wait and delete after process exits
+            cmd = f'ping -n 3 127.0.0.1 >nul && rmdir /s /q "{INSTALL_DIR}"'
+            subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.log_message("🗑️ Uninstalled. Shutting down...")
+
     def _on_tray_uninstall(self, icon, item):
         """Handle uninstall from tray menu"""
-        self.remove_autostart()
-        self.log_message("🗑️ Autostart removed. Shutting down...")
+        self._uninstall()
         self._ui_queue.put("quit")
 
     def _on_tray_exit(self, icon, item):
@@ -494,48 +455,11 @@ class OutlastTrialsMonitor:
 
 
 def main():
-    """Main function - simple and user-friendly"""
-
-    # Silent mode for autostart
-    if len(sys.argv) > 1 and "--silent" in sys.argv:
-        monitor = OutlastTrialsMonitor(silent_mode=True)
-        monitor.run()
+    if ensure_installed():
         return
 
-    # Uninstall
-    if len(sys.argv) > 1 and "--uninstall" in sys.argv:
-        monitor = OutlastTrialsMonitor()
-        monitor.remove_autostart()
-        print()
-        print("To fully uninstall, delete the TOTStatsMonitor.exe file.")
-        print("If the monitor is still running, end it in Task Manager.")
-        return
-
-    # Status
-    if len(sys.argv) > 1 and "--status" in sys.argv:
-        monitor = OutlastTrialsMonitor()
-        monitor.print_status()
-        return
-
-    # Show help
-    if len(sys.argv) > 1 and ("--help" in sys.argv or "-h" in sys.argv):
-        print("OutlastTrials Stats Contributor")
-        print("")
-        print("Just start the program - everything else happens automatically!")
-        print("")
-        print("What happens:")
-        print("• Autostart is set up")
-        print("• OutlastTrials is monitored")
-        print("• Player data is sent")
-        print("")
-        print("Flags:")
-        print("  --status     Show whether monitor is running and autostart is configured")
-        print("  --uninstall  Remove autostart registry entry")
-        print("")
-        print("That's it! No further configuration needed.")
-        return
-
-    monitor = OutlastTrialsMonitor()
+    silent = "--silent" in sys.argv
+    monitor = OutlastTrialsMonitor(silent_mode=silent)
     monitor.run()
 
 
