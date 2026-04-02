@@ -1,2 +1,4 @@
 psutil
 requests
+pystray
+Pillow

@@ -7,10 +7,12 @@ on:
       - dev
     paths:
       - 'outlast_analyzer.py'
+      - 'build.py'
       - '.github/workflows/build.yml'
   pull_request:
     paths:
       - 'outlast_analyzer.py'
+      - 'build.py'
   workflow_dispatch:
 
 jobs:
@@ -24,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Install dependencies
         run: |
@@ -32,21 +34,14 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Get version from Python file
-        id: version
-        run: |
-          $version = (Select-String -Path "outlast_analyzer.py" -Pattern '__version__ = "(.+)"').Matches.Groups[1].Value
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-        shell: pwsh
-
       - name: Build executable
-        run: |
-          pyinstaller --onefile --noconsole --name TOTStatsMonitor outlast_analyzer.py
+        id: build
+        run: python build.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TOTStatsMonitor-v${{ steps.version.outputs.version }}
+          name: TOTStatsMonitor-v${{ steps.build.outputs.version }}
           path: dist/TOTStatsMonitor.exe
           retention-days: 90
 

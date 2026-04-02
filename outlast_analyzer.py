@@ -1,5 +1,10 @@
+import collections
 import os
+import queue
+import shutil
+import subprocess
 import time
+import tkinter as tk
 import threading
 import psutil
 import re
@@ -10,7 +15,35 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-__version__ = "1.1.0"
+import pystray
+from PIL import Image, ImageDraw
+
+__version__ = "1.2.0"
+
+INSTALL_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "TOTStatsMonitor"
+INSTALL_EXE = INSTALL_DIR / "TOTStatsMonitor.exe"
+
+
+def is_installed_copy() -> bool:
+    """Check if we are running from the install directory"""
+    if not getattr(sys, 'frozen', False):
+        return False
+    return Path(sys.executable).resolve() == INSTALL_EXE.resolve()
+
+
+def ensure_installed():
+    """Copy exe to install dir and relaunch from there. Returns True if relaunched."""
+    if not getattr(sys, 'frozen', False) or is_installed_copy():
+        return False
+
+    INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+    src = Path(sys.executable)
+    shutil.copy2(src, INSTALL_EXE)
+
+    # Relaunch from installed location with same arguments
+    subprocess.Popen([str(INSTALL_EXE)] + sys.argv[1:])
+    return True
+
 
 class OutlastTrialsMonitor:
     def __init__(self, silent_mode=False):
@@ -23,7 +56,13 @@ class OutlastTrialsMonitor:
         self.logs_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OPP" / "Saved" / "Logs"
         self.api_url = "https://outlasttrialsstats.com/api/profile/contribute"
         self.autostart_key = "OutlastTrialsMonitor"
-        self.log_file_path = Path(os.path.expanduser("~")) / "AppData" / "Local" / "OutlastTrialsMonitor.log"
+        self.log_file_path = INSTALL_DIR / "monitor.log"
+
+        self.tray_icon = None
+        self.log_buffer = collections.deque(maxlen=500)
+        self.log_counter = 0
+        self.console_window = None
+        self._ui_queue = queue.Queue()
 
         # Regex patterns
         self.auth_pattern = re.compile(
@@ -35,6 +74,8 @@ class OutlastTrialsMonitor:
         """Logging with timestamp"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
+        self.log_counter += 1
+        self.log_buffer.append((self.log_counter, log_entry))
 
         if not self.silent_mode:
             print(log_entry)
@@ -42,29 +83,45 @@ class OutlastTrialsMonitor:
             try:
                 with open(self.log_file_path, 'a', encoding='utf-8') as f:
                     f.write(log_entry + "\n")
-            except:
+            except Exception:
                 pass
 
     def setup_autostart(self):
-        """Setup autostart"""
+        """Setup autostart pointing to the installed exe"""
         try:
-            script_path = Path(sys.argv[0]).resolve()
             key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+            if getattr(sys, 'frozen', False):
+                command = f'"{INSTALL_EXE}" --silent'
+            else:
+                script_path = Path(sys.argv[0]).resolve()
                 python_exe = sys.executable.replace("python.exe", "pythonw.exe")
                 if not os.path.exists(python_exe):
                     python_exe = sys.executable
-
                 command = f'"{python_exe}" "{script_path}" --silent'
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.SetValueEx(key, self.autostart_key, 0, winreg.REG_SZ, command)
 
-            if not self.silent_mode:
-                self.log_message("✅ Autostart enabled - script will start automatically with Windows")
+            self.log_message("✅ Autostart enabled - will start automatically with Windows")
             return True
         except Exception as e:
-            if not self.silent_mode:
-                self.log_message(f"❌ Error setting up autostart: {e}")
+            self.log_message(f"❌ Error setting up autostart: {e}")
+            return False
+
+    def remove_autostart(self):
+        """Remove autostart registry entry"""
+        try:
+            key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, self.autostart_key)
+            self.log_message("✅ Autostart successfully removed")
+            return True
+        except FileNotFoundError:
+            self.log_message("ℹ️ Autostart was not configured")
+            return False
+        except Exception as e:
+            self.log_message(f"❌ Error removing autostart: {e}")
             return False
 
     def is_outlast_running(self) -> bool:
@@ -182,10 +239,6 @@ class OutlastTrialsMonitor:
                             self.last_log_position[file_key] = 0
 
                     self.process_log_file(self.current_log_file)
-                else:
-                    if not self.silent_mode:
-                        self.log_message("⚠️ No log files found - play OutlastTrials to generate logs")
-
                 time.sleep(15)
 
             except Exception as e:
@@ -210,6 +263,131 @@ class OutlastTrialsMonitor:
                 self.log_message(f"Error monitoring game process: {e}")
                 time.sleep(10)
 
+    def _get_icon_path(self):
+        """Get the path to the icon.ico file (works both in dev and PyInstaller bundle)"""
+        if getattr(sys, '_MEIPASS', None):
+            return Path(sys._MEIPASS) / "icon.ico"
+        return Path(__file__).parent / "icon.ico"
+
+    def _create_tray_icon_image(self):
+        """Load the tray icon from the bundled icon file"""
+        icon_path = self._get_icon_path()
+        if icon_path.exists():
+            return Image.open(icon_path)
+        # Fallback if icon file is missing
+        size = 64
+        img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.ellipse([4, 4, size - 4, size - 4], fill=(180, 180, 180, 255))
+        draw.text((size // 2 - 8, size // 2 - 10), "OT", fill=(255, 255, 255, 255))
+        return img
+
+    def _update_tray_status(self):
+        """Update tray tooltip to reflect current monitoring state"""
+        if self.tray_icon:
+            status = "Monitoring active" if self.is_running else "Waiting for game"
+            self.tray_icon.title = f"TOTStatsMonitor - {status}"
+
+    def _open_console(self):
+        """Open a tkinter log console window (must be called on main thread)"""
+        if self.console_window is not None:
+            return
+
+        self.console_window = tk.Tk()
+        self.console_window.title("TOTStatsMonitor - Console")
+        self.console_window.geometry("700x400")
+        self.console_window.protocol("WM_DELETE_WINDOW", self._close_console)
+
+        # Set window icon
+        icon_path = self._get_icon_path()
+        if icon_path.exists():
+            try:
+                self.console_window.iconbitmap(str(icon_path))
+            except Exception:
+                pass
+
+        text = tk.Text(self.console_window, bg="#1e1e1e", fg="#cccccc", font=("Consolas", 10),
+                       state=tk.DISABLED, wrap=tk.WORD)
+        scrollbar = tk.Scrollbar(self.console_window, command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(fill=tk.BOTH, expand=True)
+        self._console_text = text
+
+        # Fill with existing log buffer
+        text.configure(state=tk.NORMAL)
+        for _, entry in self.log_buffer:
+            text.insert(tk.END, entry + "\n")
+        text.see(tk.END)
+        text.configure(state=tk.DISABLED)
+
+        self._console_last_id = self.log_counter
+
+    def _poll_console_log(self):
+        """Poll for new log entries and append to console"""
+        if self.console_window is None:
+            return
+        new_entries = [(i, e) for i, e in self.log_buffer if i > self._console_last_id]
+        if new_entries:
+            self._console_text.configure(state=tk.NORMAL)
+            for i, entry in new_entries:
+                self._console_text.insert(tk.END, entry + "\n")
+                self._console_last_id = i
+            self._console_text.see(tk.END)
+            self._console_text.configure(state=tk.DISABLED)
+
+    def _close_console(self):
+        """Close the console window"""
+        if self.console_window:
+            self.console_window.destroy()
+            self.console_window = None
+
+    def _on_tray_console(self, icon, item):
+        """Handle console open from tray menu"""
+        self._ui_queue.put("open_console")
+
+    def _uninstall(self):
+        """Full uninstall: remove autostart, delete installed files"""
+        self.remove_autostart()
+        # Schedule install dir deletion after exit (can't delete running exe)
+        if getattr(sys, 'frozen', False) and INSTALL_DIR.exists():
+            # Use cmd to wait and delete after process exits
+            cmd = f'ping -n 3 127.0.0.1 >nul && rmdir /s /q "{INSTALL_DIR}"'
+            subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.log_message("🗑️ Uninstalled. Shutting down...")
+
+    def _on_tray_uninstall(self, icon, item):
+        """Handle uninstall from tray menu"""
+        self._uninstall()
+        self._ui_queue.put("quit")
+
+    def _on_tray_exit(self, icon, item):
+        """Handle exit from tray menu"""
+        self.log_message("🛑 Monitor is shutting down...")
+        self._ui_queue.put("quit")
+
+    def _setup_tray_icon(self):
+        """Setup and run the system tray icon"""
+        menu = pystray.Menu(
+            pystray.MenuItem(
+                lambda text: f"Status: {'Monitoring' if self.is_running else 'Waiting'}",
+                None,
+                enabled=False
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Console", self._on_tray_console),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Uninstall", self._on_tray_uninstall),
+            pystray.MenuItem("Exit", self._on_tray_exit)
+        )
+        self.tray_icon = pystray.Icon(
+            "TOTStatsMonitor",
+            self._create_tray_icon_image(),
+            "TOTStatsMonitor - Waiting for game",
+            menu
+        )
+        self.tray_icon.run()
+
     def start_monitoring(self):
         """Start monitoring"""
         if self.is_running:
@@ -223,78 +401,65 @@ class OutlastTrialsMonitor:
 
         self.log_thread = threading.Thread(target=self.monitor_logs, daemon=True)
         self.log_thread.start()
+        self._update_tray_status()
 
     def stop_monitoring(self):
         """Stop monitoring"""
         self.is_running = False
+        self._update_tray_status()
 
     def run(self):
         """Main program"""
-        # Automatic setup
         self.setup_autostart()
+        self.log_message("🚀 OutlastTrials Monitor started")
 
-        if self.silent_mode:
-            self.log_message("🚀 OutlastTrials Monitor started (background mode)")
-        else:
-            print("🚀 OutlastTrials Monitor is now active!")
-            print("📋 The program runs automatically in the background and:")
-            print("   • Monitors OutlastTrials automatically")
-            print("   • Sends player data to outlasttrialsstats.com")
-            print("   • Starts automatically with Windows")
-            print()
-            print("💡 You can close this window - it will continue running in the background")
-            print("🔄 After PC restart it will start automatically again")
-            print()
-            print("📊 Status will be shown here...")
-            print("-" * 60)
+        # Start game process monitor in background thread
+        game_thread = threading.Thread(target=self.monitor_game_process, daemon=True)
+        game_thread.start()
 
+        # Start tray icon in background thread
+        tray_thread = threading.Thread(target=self._setup_tray_icon, daemon=True)
+        tray_thread.start()
+
+        # Main thread: handle UI events (tkinter must run here)
         try:
-            self.monitor_game_process()
+            self._main_loop()
         except KeyboardInterrupt:
-            self.log_message("🛑 Monitor is shutting down...")
-            self.stop_monitoring()
+            pass
+        self.stop_monitoring()
+        if self.tray_icon:
+            self.tray_icon.stop()
+
+    def _main_loop(self):
+        """Main thread loop — processes UI queue and drives tkinter"""
+        while True:
+            # Process queue commands
+            try:
+                command = self._ui_queue.get(timeout=0.5)
+                if command == "open_console":
+                    self._open_console()
+                elif command == "quit":
+                    self._close_console()
+                    return
+            except queue.Empty:
+                pass
+
+            # Drive tkinter event loop if console is open
+            if self.console_window is not None:
+                try:
+                    self._poll_console_log()
+                    self.console_window.update()
+                except tk.TclError:
+                    # Window was destroyed externally
+                    self.console_window = None
 
 
 def main():
-    """Main function - simple and user-friendly"""
-
-    # Silent mode for autostart
-    if len(sys.argv) > 1 and "--silent" in sys.argv:
-        monitor = OutlastTrialsMonitor(silent_mode=True)
-        monitor.run()
+    if ensure_installed():
         return
 
-    # Show help
-    if len(sys.argv) > 1 and ("--help" in sys.argv or "-h" in sys.argv):
-        print("OutlastTrials Stats Contributor")
-        print("")
-        print("Just start the program - everything else happens automatically!")
-        print("")
-        print("What happens:")
-        print("• Autostart is set up")
-        print("• OutlastTrials is monitored")
-        print("• Player data is sent")
-        print("")
-        print("That's it! No further configuration needed.")
-        return
-
-    # Main program - super simple
-    print("=" * 60)
-    print("    🎮 OutlastTrials Stats Contributor 🎮")
-    print("=" * 60)
-    print()
-    print("Welcome! This program automatically collects player data")
-    print("from OutlastTrials and sends it to outlasttrialsstats.com")
-    print()
-    print("🚀 AUTOMATIC SETUP:")
-    print("   ✅ Autostart will be enabled")
-    print("   ✅ Monitoring starts automatically")
-    print()
-    print("That's it! No further configuration needed.")
-    print("You can play OutlastTrials - everything else happens automatically.")
-    print("=" * 60)
-
-    monitor = OutlastTrialsMonitor()
+    silent = "--silent" in sys.argv
+    monitor = OutlastTrialsMonitor(silent_mode=silent)
     monitor.run()
 
 
