@@ -45,7 +45,7 @@ jobs:
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/TOTStatsMonitor.exe
           generate_release_notes: true
