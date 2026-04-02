@@ -5,10 +5,8 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - 'outlast_analyzer.py'
-      - 'build.py'
-      - '.github/workflows/build.yml'
+    tags:
+      - 'v*'
   pull_request:
     paths:
       - 'outlast_analyzer.py'
