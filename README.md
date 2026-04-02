@@ -10,12 +10,12 @@ Note: All contributors will automatically receive an exclusive contributor badge
 
 ## Quick Start
 
-**Download the ready-to-use executable - no Python installation required!**
+**No Python installation required!**
 
-1. Go to [Releases](../../releases)
-2. Download the latest `TOTStatsMonitor.exe`
-3. Double-click to run
-4. That's it!
+[<img src="https://img.shields.io/badge/Download-TOTStatsMonitor.exe-blue?style=for-the-badge&logo=windows" alt="Download TOTStatsMonitor.exe">](https://github.com/OutlastTrialsStats/contribute-data/releases/latest/download/TOTStatsMonitor.exe)
+
+1. Download and double-click to run
+2. That's it!
 
 The program installs itself to `%LOCALAPPDATA%\TOTStatsMonitor\` and sets up Windows autostart automatically. You can safely delete the downloaded file afterwards.
 
