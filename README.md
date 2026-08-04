@@ -30,6 +30,10 @@ After starting, the program runs in the background and shows an icon in the Wind
 | **Uninstall** | Removes autostart, deletes installed files, and shuts down the monitor |
 | **Exit** | Stops the monitor without uninstalling (will restart on next Windows boot) |
 
+## Contributing
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) — they drive the version bump and the changelog through `release-please`. See [doc/commit-convention.md](doc/commit-convention.md) before opening a pull request.
+
 ## Disclaimer
 
 We are not Red Barrels and not partnered with Red Barrels or The Outlast Trials.
