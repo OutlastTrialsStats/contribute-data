@@ -4,8 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Action bumps never reach the shipped executable -> no release.
     commit-message:
-      prefix: "deps"
+      prefix: "ci"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
