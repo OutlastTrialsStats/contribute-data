@@ -18,8 +18,6 @@ from typing import Optional
 import pystray
 from PIL import Image, ImageDraw
 
-__version__ = "1.2.0"
-
 INSTALL_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "TOTStatsMonitor"
 INSTALL_EXE = INSTALL_DIR / "TOTStatsMonitor.exe"
 
