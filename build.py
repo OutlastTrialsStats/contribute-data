@@ -1,13 +1,13 @@
 """Local build script for TOTStatsMonitor.exe — also used by CI."""
+import json
 import os
-import re
 import subprocess
 import sys
 
 
 def get_version():
-    with open("outlast_analyzer.py", encoding="utf-8") as f:
-        return re.search(r'__version__ = "(.+)"', f.read()).group(1)
+    with open(".release-please-manifest.json", encoding="utf-8") as f:
+        return json.load(f)["."]
 
 
 def generate_version_info(version):
