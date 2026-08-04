@@ -1,0 +1,27 @@
+# TOTStatsMonitor is a PyInstaller application, not a distributable package — it is never
+# pip-installed. This file therefore carries tooling configuration only. The single source of
+# truth for the version is src/totstats/__init__.py (kept in sync with
+# .release-please-manifest.json by release-please; build.py fails the build on drift).
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tools"]
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+]
+ignore = [
+    "B008",  # function call in default argument — we use it for injected clocks/factories
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["totstats"]

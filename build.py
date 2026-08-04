@@ -62,7 +62,7 @@ def build(version):
     ])
 
     if result.returncode == 0:
-        print(f"\nBuild successful! Output: dist/TOTStatsMonitor.exe")
+        print("\nBuild successful! Output: dist/TOTStatsMonitor.exe")
     else:
         print(f"\nBuild failed with exit code {result.returncode}")
         sys.exit(result.returncode)

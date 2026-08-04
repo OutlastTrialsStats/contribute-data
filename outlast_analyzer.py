@@ -1,21 +1,20 @@
 import collections
 import os
 import queue
+import re
 import shutil
 import subprocess
+import sys
+import threading
 import time
 import tkinter as tk
-import threading
-import psutil
-import re
-import requests
-import sys
 import winreg
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
+import psutil
 import pystray
+import requests
 from PIL import Image, ImageDraw
 
 INSTALL_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "TOTStatsMonitor"
@@ -66,7 +65,8 @@ class OutlastTrialsMonitor:
         self.auth_pattern = re.compile(
             r"Client authentication succeeded\. Profile ID: ([0-9a-f-]{36})\. Session ID: ([0-9a-f-]{36})")
         self.player_pattern = re.compile(
-            r"RB:\s+\[([^\]]+)\] Player Init Replicated\. Player Id = [^\[]*\[([^\]]*)\] \[([0-9a-f-]{36})\],\s+Player Slot = (\d+), IsLocallyControlled = (Yes|No)")
+            r"RB:\s+\[([^\]]+)\] Player Init Replicated\. Player Id = [^\[]*\[([^\]]*)\] "
+            r"\[([0-9a-f-]{36})\],\s+Player Slot = (\d+), IsLocallyControlled = (Yes|No)")
 
     def log_message(self, message: str):
         """Logging with timestamp"""
@@ -135,7 +135,7 @@ class OutlastTrialsMonitor:
                 continue
         return False
 
-    def get_newest_log_file(self) -> Optional[Path]:
+    def get_newest_log_file(self) -> Path | None:
         """Find newest log file"""
         if not self.logs_path.exists():
             return None
@@ -147,7 +147,7 @@ class OutlastTrialsMonitor:
         newest_file = max(log_files, key=lambda x: x.stat().st_mtime)
         return newest_file
 
-    def parse_user_profile_id(self, log_content: str) -> Optional[str]:
+    def parse_user_profile_id(self, log_content: str) -> str | None:
         """Parse user profile ID from logs"""
         match = self.auth_pattern.search(log_content)
         if match:
@@ -194,7 +194,7 @@ class OutlastTrialsMonitor:
             file_key = str(log_file)
             last_pos = self.last_log_position.get(file_key, 0)
 
-            with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(log_file, encoding='utf-8', errors='ignore') as f:
                 f.seek(last_pos)
                 new_content = f.read()
 
@@ -210,10 +210,12 @@ class OutlastTrialsMonitor:
                         players = self.parse_players_from_logs(new_content)
 
                         for player in players:
-                            if not player['is_local'] and player['profile_uuid'] not in self.processed_players:
-                                self.processed_players.add(player['profile_uuid'])
-                                self.log_message(f"🎮 New player: {player['name']} (Slot {player['slot']})")
-                                self.send_contribution_request(self.user_profile_id, player['profile_uuid'])
+                            uuid = player['profile_uuid']
+                            if player['is_local'] or uuid in self.processed_players:
+                                continue
+                            self.processed_players.add(uuid)
+                            self.log_message(f"🎮 New player: {player['name']} (Slot {player['slot']})")
+                            self.send_contribution_request(self.user_profile_id, uuid)
 
         except Exception as e:
             self.log_message(f"Error processing log file: {e}")
