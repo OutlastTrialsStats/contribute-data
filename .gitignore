@@ -3,6 +3,7 @@ dist/
 *.spec
 version_info.txt
 totstats-dryrun.log
+tools/icon-preview.png
 __pycache__/
 .venv/
 .idea/
