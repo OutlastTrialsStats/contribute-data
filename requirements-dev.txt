@@ -1,3 +1,5 @@
--r requirements.txt
+# Editable install of the src/ layout, so `python -m totstats` resolves from any directory.
+# It pulls in requirements.txt through pyproject.toml's dynamic dependencies.
+-e .
 ruff
 pyinstaller

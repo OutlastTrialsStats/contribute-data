@@ -6,3 +6,4 @@ totstats-dryrun.log
 __pycache__/
 .venv/
 .idea/
+*.egg-info/
