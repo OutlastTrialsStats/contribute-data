@@ -4,42 +4,36 @@ Thanks for helping out. This is a small Windows-only app; the setup is correspon
 
 ## Development setup
 
-Python 3.12 is what CI builds with, and `pyproject.toml` targets it. Use it locally too — an
-older interpreter will happily run most of the code and then disagree with CI over syntax.
-
 ```powershell
-py -3.12 -m venv .venv
+py -m venv .venv
 .venv\Scripts\pip install -r requirements-dev.txt
 ```
 
 `requirements-dev.txt` installs the project itself in editable mode, which is what puts the
 `src/` layout on the import path. Without it `python -m totstats` finds nothing.
 
-```powershell
-.venv\Scripts\python -m totstats --version
-```
-
 ## Running it without the game
 
-Starting the app for real installs it into `%LOCALAPPDATA%` and sends data to the live API —
-neither of which you want while developing. Use `--dry-run` instead:
+Starting the app for real installs it into `%LOCALAPPDATA%` and sends data to the live API.
+Use `--dry-run` instead:
 
 ```powershell
 # Copy a session's logs somewhere safe first; the game overwrites OPP.log.
-Copy-Item "$env:LOCALAPPDATA\OPP\Saved\Logs" C:\temp\logs -Recurse
+New-Item -ItemType Directory -Force C:\temp\logs | Out-Null
+Copy-Item "$env:LOCALAPPDATA\OPP\Saved\Logs\*.log" C:\temp\logs
 
 .venv\Scripts\python -m totstats --dry-run --verbose --logs-dir C:\temp\logs
 ```
 
-A dry run reads the given directory whether or not the game is running, sends nothing (every
-request is logged as `Would contribute`), writes its log to `totstats-dryrun.log` in the working
-directory instead of the installation, keeps its settings in memory, and does not touch the
-registry. It replays the whole file on startup, so a recorded session runs end to end.
+A dry run reads the given directory whether or not the game is running, keeps its settings in
+memory and touches neither the registry nor the installation. It replays the whole file on
+startup, so a recorded session runs end to end.
 
 | Flag | Effect |
 |---|---|
 | `--dry-run` | Read logs without the game, send nothing, touch nothing |
 | `--logs-dir PATH` | Read from PATH instead of `%LOCALAPPDATA%\OPP\Saved\Logs` |
+| `--presence-connect` | Talk to Discord for real during a dry run, instead of only logging the status |
 | `--verbose` | Log at debug level, including replayed lines |
 | `--no-install` | Do not copy the executable into `%LOCALAPPDATA%` and relaunch |
 | `--silent` | No console output; this is what the autostart entry uses |
@@ -58,9 +52,8 @@ To produce the executable:
 .venv\Scripts\python build.py
 ```
 
-`build.py` reads the version from `src/totstats/__init__.py` and refuses to build if it disagrees
-with `.release-please-manifest.json`. Both are updated by `release-please`; do not bump either by
-hand.
+`build.py` refuses to build if the version in `src/totstats/__init__.py` disagrees with
+`.release-please-manifest.json`. Both are updated by `release-please`; do not bump either by hand.
 
 ## Code layout
 
@@ -70,12 +63,13 @@ src/totstats/
 ├─ app.py         wiring and lifecycle — the only place that knows every component
 ├─ shared/        infrastructure both features need
 ├─ contribute/    the contribute feature
+├─ presence/      the Discord Rich Presence feature
 └─ ui/            tray icon and console window
 ```
 
 The rule that keeps this workable: **`shared/` knows nothing about features, and features know
-nothing about each other.** Anything Discord-specific belongs in a `presence/` package, not in
-`shared/` and never in `contribute/`.
+nothing about each other.** Anything Discord-specific goes in `presence/`, not in `shared/` and
+never in `contribute/`.
 
 `shared/log_tail.py` is the piece to understand first. The game's log is read once, by one
 tailer, and dispatched to subscribers — reading it twice would double the I/O and let two
