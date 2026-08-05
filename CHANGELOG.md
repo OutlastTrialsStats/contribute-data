@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/OutlastTrialsStats/totstats-monitor/compare/v2.0.0...v2.0.1) (2026-08-05)
+
+
+### Miscellaneous Chores
+
+* Update Discord integration assets and README visuals ([e1c7c03](https://github.com/OutlastTrialsStats/totstats-monitor/commit/e1c7c0328581547dcd62cd5c7f872331983260ba))
+
 ## [2.0.0](https://github.com/OutlastTrialsStats/totstats-monitor/compare/v1.2.1...v2.0.0) (2026-08-05)
 
 
