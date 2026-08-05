@@ -21,8 +21,8 @@ py -3.12 -m venv .venv
 
 ## Running it without the game
 
-Starting the app for real installs it into `%LOCALAPPDATA%`, asks about autostart and sends data
-to the live API — none of which you want while developing. Use `--dry-run` instead:
+Starting the app for real installs it into `%LOCALAPPDATA%` and sends data to the live API —
+neither of which you want while developing. Use `--dry-run` instead:
 
 ```powershell
 # Copy a session's logs somewhere safe first; the game overwrites OPP.log.
@@ -70,7 +70,7 @@ src/totstats/
 ├─ app.py         wiring and lifecycle — the only place that knows every component
 ├─ shared/        infrastructure both features need
 ├─ contribute/    the contribute feature
-└─ ui/            tray icon, console window, first-run prompt
+└─ ui/            tray icon and console window
 ```
 
 The rule that keeps this workable: **`shared/` knows nothing about features, and features know
@@ -82,8 +82,9 @@ tailer, and dispatched to subscribers — reading it twice would double the I/O 
 features disagree about what the game is doing. A feature subscribes with a list of literal
 substrings it cares about, and only lines containing one of them reach it.
 
-See [doc/architecture.md](doc/architecture.md) for the thread model and for how a second feature
-is added, and [doc/log-format.md](doc/log-format.md) for what the log lines actually mean.
+A feature is a package under `src/totstats/` with a service class exposing `INTERESTS`,
+`on_line(line)` and `on_rotate()`; `app.py` subscribes it to the tailer. Sinks run on the watcher
+thread and must not block — enqueue and return.
 
 ## Commit messages
 

@@ -1,7 +1,7 @@
 """Persistent user settings, stored as JSON next to the installation.
 
-Reading never raises and writing is atomic; doc/settings.md has the schema and the exact
-behaviour for every way the file can be broken.
+Reading never raises — the build runs with --noconsole, so an exception during startup is an
+invisible crash. Writing is atomic: written beside itself and renamed into place.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ class Features:
 
 @dataclass
 class Settings:
-    # None = the user has not been asked yet.
+    # None = not resolved yet; a frozen build then defaults to on.
     autostart: bool | None = None
     features: Features = field(default_factory=Features)
 

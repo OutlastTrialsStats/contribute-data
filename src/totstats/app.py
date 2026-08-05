@@ -1,7 +1,6 @@
 """Application wiring and lifecycle.
 
-Starts the four threads the app runs on and owns the shutdown order. Which thread may touch
-what is in doc/architecture.md.
+Starts the four threads the app runs on and owns the shutdown order.
 """
 
 from __future__ import annotations
@@ -23,7 +22,6 @@ from totstats.shared.profile_id import OwnProfileIdResolver
 from totstats.shared.settings import SettingsStore
 from totstats.shared.ui_queue import UiQueue
 from totstats.ui.console_window import ConsoleWindow
-from totstats.ui.first_run import ask_autostart
 from totstats.ui.tray import TrayCallbacks, TrayIcon
 
 TAIL_INTERVAL = 0.25
@@ -97,8 +95,7 @@ class App:
         self._root.tk.call("tk", "scaling", self._root.winfo_fpixels("1i") / 72.0)
         self._console = ConsoleWindow(self._root, self.log, paths.icon_path())
 
-        # After the root exists: the first-run prompt needs a parent window. Before the tray and
-        # the watcher start, so the answer is recorded even if the user quits immediately.
+        # Before the tray starts, so its checkbox reads a settled value.
         if not self.args.dry_run:
             self._resolve_autostart()
 
@@ -140,27 +137,21 @@ class App:
             self._console.open()
 
     def _resolve_autostart(self) -> None:
-        """Settle the autostart question once, then keep the registry matching the answer.
+        """Settle autostart once, then keep the registry matching the answer.
 
-        An entry left by an older version counts as consent and is adopted without asking again.
+        A frozen build opts in by default; an entry from an older version counts the same. Once
+        the answer exists — here or from the tray — it is what applies, including "no". Only a
+        settings file that has never recorded one gets the default, which is what makes the tray
+        toggle stick across restarts.
         """
         if self.settings.autostart is None:
             if autostart.migrate_legacy():
                 self.settings.autostart = True
                 self.log.info("✅ Autostart carried over from a previous version")
-            elif autostart.is_enabled():
-                self.settings.autostart = True
-            elif self.args.silent:
-                # A dialog out of a background start appears from nowhere; ask on the next one.
-                return
             else:
-                assert self._root is not None
-                self.settings.autostart = ask_autostart(self._root)
-                self.log.info(
-                    "✅ Autostart enabled"
-                    if self.settings.autostart
-                    else "ℹ️ Autostart declined — start it yourself whenever you want to help"
-                )
+                self.settings.autostart = autostart.is_enabled() or paths.is_frozen()
+                if self.settings.autostart:
+                    self.log.info("✅ Starting with Windows — untick it in the tray to stop that")
             self.store.save()
 
         if self.settings.autostart:

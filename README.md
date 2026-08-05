@@ -14,12 +14,12 @@ files, and it needs no launch options.
 [<img src="https://img.shields.io/badge/Download-TOTStatsMonitor.exe-blue?style=for-the-badge&logo=windows" alt="Download TOTStatsMonitor.exe">](https://github.com/OutlastTrialsStats/contribute-data/releases/latest/download/TOTStatsMonitor.exe)
 
 1. Download and double-click to run.
-2. Answer the one question it asks: should it start with Windows?
-3. That's it.
+2. That's it.
 
 The app copies itself to `%LOCALAPPDATA%\TOTStatsMonitor\` on first run, so you can delete the
-downloaded file afterwards. If you say no to autostart, nothing is written to your registry —
-just start it yourself whenever you feel like helping out.
+downloaded file afterwards. It also sets itself to start with Windows, so it is already running
+the next time you play. Untick **Start with Windows** in the tray menu and the registry entry is
+removed — that choice sticks, the app will not put it back on the next start.
 
 ## Features
 
@@ -43,8 +43,7 @@ how full the party is, and how long you have been in there.
 
 This is not implemented yet. When it ships it will be part of this same app — one download, one
 tray icon, one toggle, and **no Steam launch options and no files dropped into your game
-directory**. The log format it needs is already documented in
-[doc/log-format.md](doc/log-format.md).
+directory**.
 
 ## System Tray
 
@@ -60,8 +59,7 @@ the `^` arrow). Right-click it for the menu:
 | **Uninstall** | Removes autostart, deletes the installed files, and shuts down |
 | **Exit** | Stops the app without uninstalling |
 
-Settings are stored in `%LOCALAPPDATA%\TOTStatsMonitor\settings.json` — see
-[doc/settings.md](doc/settings.md).
+Settings are stored in `%LOCALAPPDATA%\TOTStatsMonitor\settings.json`.
 
 ## Contributing
 
