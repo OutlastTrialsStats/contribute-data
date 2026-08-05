@@ -2,7 +2,7 @@
 
 A small companion app for [outlasttrialsstats.com](https://outlasttrialsstats.com). It sits in
 your Windows system tray, watches The Outlast Trials' own log file while you play, and turns that
-into two things: community statistics, and — soon — Discord Rich Presence.
+into two things: Discord Rich Presence, and community statistics.
 
 It reads a log file the game already writes. It does not touch the game, its memory, or its
 files, and it needs no launch options.
@@ -11,10 +11,13 @@ files, and it needs no launch options.
 
 **No Python installation required.**
 
-[<img src="https://img.shields.io/badge/Download-TOTStatsMonitor.exe-blue?style=for-the-badge&logo=windows" alt="Download TOTStatsMonitor.exe">](https://github.com/OutlastTrialsStats/contribute-data/releases/latest/download/TOTStatsMonitor.exe)
+[<img src="https://img.shields.io/badge/Download-TOTStatsMonitor.exe-blue?style=for-the-badge&logo=windows" alt="Download TOTStatsMonitor.exe">](https://github.com/OutlastTrialsStats/totstats-monitor/releases/latest/download/TOTStatsMonitor.exe)
 
 1. Download and double-click to run.
 2. That's it.
+
+The executable is not signed, so Windows SmartScreen will warn you the first time. Click "More
+info", then "Run anyway".
 
 The app copies itself to `%LOCALAPPDATA%\TOTStatsMonitor\` on first run, so you can delete the
 downloaded file afterwards. It also sets itself to start with Windows, so it is already running
@@ -22,6 +25,17 @@ the next time you play. Untick **Start with Windows** in the tray menu and the r
 removed — that choice sticks, the app will not put it back on the next start.
 
 ## Features
+
+### Discord Rich Presence
+
+Shows what you are currently playing on your Discord profile: which trial, where it takes place,
+which difficulty, how full the party is, and how long you have been in there. The trial artwork
+comes along with it, and a button that links to your stats page. Escalation shows which step you
+are on, Invasion whether you are the Imposter or a Reagent. Outside a trial it says so too: main
+menu, Sleep Room, looking for a group.
+
+It only ever shows something while the game is running, and it needs the Discord desktop app open.
+Untick **Discord Rich Presence** in the tray menu and your status is cleared immediately.
 
 ### Contribute player data
 
@@ -32,23 +46,9 @@ statistics database — the site can only track players it already knows about.
 All contributors automatically receive an exclusive contributor badge on their profile at
 outlasttrialsstats.com.
 
-Only profile IDs are sent. No chat, no personal data, nothing about your own performance. You can
-watch exactly what happens in the Console window, and switch the whole thing off from the tray
-menu without uninstalling.
-
-### Discord Rich Presence
-
-Shows what you are currently playing on your Discord profile: which trial, where it takes place,
-which difficulty, how full the party is, and how long you have been in there. Outside a trial it
-says so too — main menu, Sleep Room, looking for a group. The trial artwork comes along with it.
-
-It only ever shows something while the game is running, and it needs the Discord desktop app open.
-There are **no Steam launch options and no files dropped into your game directory** — the same
-download and the same tray icon as everything else here. Untick **Discord Rich Presence** in the
-tray menu and your status is cleared immediately.
-
-Trial names and artwork are refreshed from this repository while the app runs, so new trials get
-their real names without waiting for an update.
+Only profile IDs are sent, theirs and yours as the contributor. No names, no chat, nothing about
+your own performance. You can watch exactly what happens in the Console window, and switch the
+whole thing off from the tray menu without uninstalling.
 
 ## System Tray
 
@@ -65,7 +65,9 @@ the `^` arrow). Right-click it for the menu:
 | **Uninstall** | Removes autostart, deletes the installed files, and shuts down |
 | **Exit** | Stops the app without uninstalling |
 
-Settings are stored in `%LOCALAPPDATA%\TOTStatsMonitor\settings.json`.
+Everything the app keeps lives in `%LOCALAPPDATA%\TOTStatsMonitor\`: `settings.json`, its own
+`monitor.log`, and the cached trial list. Uninstall deletes that folder and the autostart entry
+and leaves nothing else behind.
 
 ## Contributing
 
