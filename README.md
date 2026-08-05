@@ -34,6 +34,11 @@ comes along with it, and a button that links to your stats page. Escalation show
 are on, Invasion whether you are the Imposter or a Reagent. Outside a trial it says so too: main
 menu, Sleep Room, looking for a group.
 
+<p align="center">
+  <img src="doc/screenshot_discord_example_1.png" height="700" alt="Sleep Room, party of four">
+  <img src="doc/screenshot_discord_example_2.png" height="700" alt="In a trial during an Invasion">
+</p>
+
 It only ever shows something while the game is running, and it needs the Discord desktop app open.
 Untick **Discord Rich Presence** in the tray menu and your status is cleared immediately.
 

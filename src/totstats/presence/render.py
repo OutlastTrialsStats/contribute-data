@@ -20,7 +20,7 @@ MIN_PARTY = 2
 
 SEPARATOR = " • "
 GAME_NAME = "The Outlast Trials"
-PROFILE_BUTTON = "Look at Stats"
+PROFILE_BUTTON = "View Stats"
 
 _QUIET = (Activity.UNKNOWN, Activity.OFFLINE)
 @dataclass(frozen=True)
