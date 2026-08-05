@@ -1,4 +1,3 @@
-"""Local build script for TOTStatsMonitor.exe — also used by CI."""
 import json
 import os
 import re
