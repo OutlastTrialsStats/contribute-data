@@ -36,14 +36,19 @@ Only profile IDs are sent. No chat, no personal data, nothing about your own per
 watch exactly what happens in the Console window, and switch the whole thing off from the tray
 menu without uninstalling.
 
-### Discord Rich Presence — planned
+### Discord Rich Presence
 
-Showing what you are currently playing on your Discord profile: which trial, which difficulty,
-how full the party is, and how long you have been in there.
+Shows what you are currently playing on your Discord profile: which trial, where it takes place,
+which difficulty, how full the party is, and how long you have been in there. Outside a trial it
+says so too — main menu, Sleep Room, looking for a group. The trial artwork comes along with it.
 
-This is not implemented yet. When it ships it will be part of this same app — one download, one
-tray icon, one toggle, and **no Steam launch options and no files dropped into your game
-directory**.
+It only ever shows something while the game is running, and it needs the Discord desktop app open.
+There are **no Steam launch options and no files dropped into your game directory** — the same
+download and the same tray icon as everything else here. Untick **Discord Rich Presence** in the
+tray menu and your status is cleared immediately.
+
+Trial names and artwork are refreshed from this repository while the app runs, so new trials get
+their real names without waiting for an update.
 
 ## System Tray
 
@@ -54,6 +59,7 @@ the `^` arrow). Right-click it for the menu:
 |---|---|
 | **Status** | Whether it is monitoring, waiting for the game, or paused |
 | **Contribute player data** | Turns contributing on or off immediately, without uninstalling |
+| **Discord Rich Presence** | Shows or hides what you are playing on your Discord profile |
 | **Start with Windows** | Adds or removes the autostart entry |
 | **Console** | A live log window: detected players, API responses, errors |
 | **Uninstall** | Removes autostart, deletes the installed files, and shuts down |

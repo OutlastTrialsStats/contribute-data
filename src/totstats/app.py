@@ -14,6 +14,11 @@ from pathlib import Path
 from totstats import APP_NAME, __version__
 from totstats.contribute.api import ContributeApi
 from totstats.contribute.service import ContributeService
+from totstats.presence import DISCORD_CLIENT_ID
+from totstats.presence.catalog import load_catalog
+from totstats.presence.catalog_sync import CatalogSync
+from totstats.presence.client import DiscordClient
+from totstats.presence.service import PresenceService
 from totstats.shared import autostart, installer, paths
 from totstats.shared.applog import AppLog
 from totstats.shared.game_process import GameProcessEvent, GameProcessWatcher
@@ -76,10 +81,33 @@ class App:
             name="contribute",
         )
 
+        # A dry run keeps its hands off the installation, so nothing is cached and nothing is
+        # published — the console shows what Discord would have been told instead.
+        cache_dir = None if args.dry_run else paths.install_dir()
+        catalog = load_catalog(self.log, cache_dir)
+        self._discord = DiscordClient(
+            DISCORD_CLIENT_ID, self.log, dry_run=args.dry_run and not args.presence_connect
+        )
+        self.presence = PresenceService(self._discord, catalog, self._ids, self.log)
+        self.presence.enabled = self.settings.features.presence
+        self._catalog_sync = (
+            None
+            if cache_dir is None
+            else CatalogSync(self.presence.set_catalog, self.log, self._stop, cache_dir, catalog)
+        )
+
+        self._tailer.subscribe(
+            self.presence.on_line,
+            needles=PresenceService.INTERESTS,
+            on_rotate=self.presence.on_rotate,
+            on_replay_complete=self.presence.on_replay_complete,
+            name="presence",
+        )
+
     def status_text(self) -> str:
         if self.args.dry_run:
             return "Dry run"
-        if not self.settings.features.contribute:
+        if not (self.settings.features.contribute or self.settings.features.presence):
             return "Paused"
         return "Monitoring" if self._game.running else "Waiting for game"
 
@@ -100,6 +128,9 @@ class App:
             self._resolve_autostart()
 
         self.contribute.start()
+        self.presence.start()
+        if self._catalog_sync is not None:
+            self._catalog_sync.start()
 
         watcher = threading.Thread(target=self._watch_loop, name="watcher", daemon=True)
         watcher.start()
@@ -113,8 +144,10 @@ class App:
                 status_text=self.status_text,
                 autostart_enabled=lambda: bool(self.settings.autostart),
                 contribute_enabled=lambda: self.settings.features.contribute,
+                presence_enabled=lambda: self.settings.features.presence,
                 toggle_autostart=self._toggle_autostart,
                 toggle_contribute=self._toggle_contribute,
+                toggle_presence=self._toggle_presence,
             ),
             paths.icon_path(),
         )
@@ -182,6 +215,20 @@ class App:
         )
         self._update_tray()
 
+    def _toggle_presence(self) -> None:
+        enabled = not self.settings.features.presence
+        self.settings.features.presence = enabled
+        self.presence.set_enabled(enabled)
+        self.store.save()
+        if enabled and self._catalog_sync is not None:
+            self._catalog_sync.refresh_soon()
+        self.log.info(
+            "✅ Discord Rich Presence enabled"
+            if enabled
+            else "⏸️ Discord Rich Presence paused — your Discord status is cleared"
+        )
+        self._update_tray()
+
     def _uninstall(self) -> None:
         self._uninstalling = True
         if autostart.disable():
@@ -226,9 +273,11 @@ class App:
             self._ids.reset()
             self._tailer.reset()
             self.contribute.on_rotate()
+            self.presence.on_game_started()
         else:
             self.log.info("🛑 The Outlast Trials closed, monitoring stopped")
             self._tailer.reset()
+            self.presence.on_game_stopped()
         self._update_tray()
 
     def _update_tray(self) -> None:
@@ -238,6 +287,7 @@ class App:
     def _shutdown(self, watcher: threading.Thread) -> None:
         self._stop.set()
         self.contribute.stop()
+        self.presence.stop()
         self._api.close()
         watcher.join(2.0)
         self._tailer.close()

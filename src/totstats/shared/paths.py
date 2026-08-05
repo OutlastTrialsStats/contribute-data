@@ -8,9 +8,6 @@ from pathlib import Path
 
 from totstats import APP_NAME
 
-# Import name of the package; also the directory PyInstaller bundles package data under.
-APP_PACKAGE = "totstats"
-
 
 def is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
@@ -19,11 +16,6 @@ def is_frozen() -> bool:
 def _bundle_root() -> Path | None:
     base = getattr(sys, "_MEIPASS", None)
     return Path(base) if base else None
-
-
-def _package_dir() -> Path:
-    """src/totstats — the directory of the totstats package in a source checkout."""
-    return Path(__file__).resolve().parents[1]
 
 
 def _repo_root() -> Path:
@@ -64,11 +56,10 @@ def bundled_path(*parts: str) -> Path:
     return (root or _repo_root()).joinpath(*parts)
 
 
-def package_data_path(*parts: str) -> Path:
-    """A data file that lives inside the totstats package, e.g. presence/data/trials.json."""
-    root = _bundle_root()
-    return (root / APP_PACKAGE if root else _package_dir()).joinpath(*parts)
+def asset_path(name: str) -> Path:
+    """A file from assets/ — shipped alongside the executable under the same directory name."""
+    return bundled_path("assets", name)
 
 
 def icon_path() -> Path:
-    return bundled_path("icon.ico")
+    return asset_path("icon.ico")

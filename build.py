@@ -75,8 +75,10 @@ def build(version):
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--noconsole",
-        "--icon", "icon.ico",
-        "--add-data", "icon.ico;.",
+        "--icon", "assets/icon.ico",
+        # The tray icon, plus the trial names and banners. The app refreshes the catalog from the
+        # repository at runtime; this copy is what it falls back to offline and on the first start.
+        "--add-data", "assets;assets",
         "--name", "TOTStatsMonitor",
         "--version-file", "version_info.txt",
         # src layout: the totstats package is not on the default path.
