@@ -82,7 +82,6 @@ def render(state: GameState, catalog: Catalog, profile_id: str | None = None) ->
     small_image, small_text = _role_icon(state, catalog)
 
     party_id, party_size = None, None
-    # Playing alone is not a party, and "1 of 4" under every solo status is just noise.
     if state.party_size and state.party_size >= MIN_PARTY and not state.in_invasion:
         party_id = state.party_key or "party"
         party_size = (state.party_size, max(state.party_max, state.party_size))
@@ -133,7 +132,6 @@ def _describe(
         if state.chain_step:
             parts.append(f"Step {state.chain_step}")
     else:
-        # An unknown trial id is never shown: the program name carries the line instead.
         headline = trial.name if trial is not None else (program or "In a Trial")
         if trial is not None and trial.location:
             parts.append(trial.location)

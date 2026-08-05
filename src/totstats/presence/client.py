@@ -37,7 +37,6 @@ class DiscordClient:
         return self._dry_run or self._rpc is not None
 
     def next_attempt_in(self, now: float | None = None) -> float:
-        """Seconds until reconnecting is worth trying again."""
         return max(0.0, self._next_attempt - (now if now is not None else time.monotonic()))
 
     def ensure_connected(self) -> bool:
@@ -63,12 +62,12 @@ class DiscordClient:
         except Exception as exc:  # noqa: BLE001 - the library's failure modes are open-ended
             self._drop(f"Discord rejected the update ({exc})")
             return False
-        self._log.debug(f"🔗 Discord shows: {payload.summary()}")
+        self._log.info(f"🎮 Discord shows: {payload.summary()}")
         return True
 
     def clear(self) -> bool:
         if self._dry_run:
-            self._log.debug("🧪 Would clear the Discord status")
+            self._log.info("🧪 Would clear the Discord status")
             return True
         rpc = self._rpc
         if rpc is None:
@@ -78,6 +77,7 @@ class DiscordClient:
         except Exception as exc:  # noqa: BLE001
             self._drop(f"Could not clear the Discord status ({exc})")
             return False
+        self._log.debug("🔗 Discord status cleared")
         return True
 
     def close(self) -> None:
@@ -121,6 +121,7 @@ class DiscordClient:
 
     def _drop(self, message: str) -> None:
         self._log.debug(f"🔗 {message}")
+        self._log.info("🔗 Lost the connection to Discord — reconnecting")
         self.close()
         self._attempt = 0
         self._schedule_retry(time.monotonic())

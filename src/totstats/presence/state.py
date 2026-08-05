@@ -24,7 +24,6 @@ from totstats.presence.parser import (
 
 PROGRAM_INVASION = "programINVASION"
 
-# The phase that starts the trial clock, and the phases that end it.
 PHASE_STARTED = "StageStarted"
 PHASE_ENDED = ("StageEnding", "StageSuccess", "StageFailed", "PostGameExitTimeout", "ReturnToLobby")
 

@@ -1,7 +1,3 @@
-# TOTStatsMonitor ships as a PyInstaller executable, never as a wheel on an index. The metadata
-# below exists so that `pip install -e .` puts the src/ layout on the import path during
-# development. The shipped build does not go through it — build.py passes `--paths src` directly.
-
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

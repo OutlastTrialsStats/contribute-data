@@ -32,10 +32,38 @@ SETTLE = 2.0
 # A replay that never reports being finished must not keep the status blank forever.
 REPLAY_GUARD = 30.0
 
-# How long the worker sleeps when it has nothing scheduled.
 IDLE_WAIT = 5.0
 
 WARN_INTERVAL = 60.0
+
+# The state fields worth naming in the log. party_key is a hash of an account id and
+# trial_started_at is an epoch; neither reads as anything useful in a log line.
+_TRACKED = (
+    "activity",
+    "program_id",
+    "trial_id",
+    "difficulty",
+    "chain_step",
+    "phase",
+    "party_size",
+    "party_max",
+    "invasion_role",
+)
+
+
+def _show(value: object) -> str:
+    return "—" if value is None else str(value)
+
+
+def _describe(before: GameState, after: GameState) -> str:
+    changes = [
+        f"{field} {_show(getattr(before, field))}→{_show(getattr(after, field))}"
+        for field in _TRACKED
+        if getattr(before, field) != getattr(after, field)
+    ]
+    if (before.trial_started_at is None) != (after.trial_started_at is None):
+        changes.append("clock started" if after.trial_started_at else "clock cleared")
+    return ", ".join(changes)
 
 
 class RateLimiter:
@@ -98,7 +126,6 @@ class _Mailbox:
         self._event.set()
 
     def take(self, timeout: float) -> tuple[GameState | None, bool]:
-        """Waits up to timeout and returns (new state or None, closed)."""
         self._event.wait(timeout)
         self._event.clear()
         with self._lock:
@@ -129,6 +156,8 @@ class PresenceService:
 
         self._state = GameState()
         self._last_sent: Payload | None = None
+        self._pending: Payload | None = None
+        self._held = False
         self._changed_at = 0.0
         self._replaying = True
         self._live_since = 0.0
@@ -173,6 +202,7 @@ class PresenceService:
                 self._log.warning(f"⚠️ Rich Presence could not read a log line: {exc}")
 
     def on_rotate(self) -> None:
+        self._log.debug("🎮 New log file, rebuilding the game state")
         self._machine.reset()
         self._unknown_trials.clear()
         self._replaying = True
@@ -184,6 +214,8 @@ class PresenceService:
         if not self._replaying:
             return
         self._replaying = False
+        state = _describe(GameState(), self._machine.snapshot) or "nothing known yet"
+        self._log.debug(f"🎮 Caught up with the log: {state}")
         self._publish()
 
     def _feed(self, line: LogLine) -> None:
@@ -191,9 +223,16 @@ class PresenceService:
         event = self._parser.parse(line)
         if event is None:
             return
-        if self._machine.apply(event, line.ts, live=not line.replay):
-            self._note_unknown_trial()
-            self._publish()
+        before = self._machine.snapshot
+        if not self._machine.apply(event, line.ts, live=not line.replay):
+            return
+        # A replay walks through every transition of the session; only the result is worth a line.
+        if not self._replaying:
+            changed = _describe(before, self._machine.snapshot)
+            if changed:
+                self._log.debug(f"🎮 {changed}")
+        self._note_unknown_trial()
+        self._publish()
 
     def _note_unknown_trial(self) -> None:
         trial_id = self._machine.snapshot.trial_id
@@ -242,7 +281,7 @@ class PresenceService:
         except Exception as exc:  # noqa: BLE001 - one dead feature must not take the app with it
             self._log.error(f"❌ Discord Rich Presence stopped: {exc}")
         finally:
-            self._client.clear()
+            self._take_down()
             self._client.close()
 
     def _loop(self) -> None:
@@ -268,14 +307,20 @@ class PresenceService:
         payload = render(self._state, self._catalog, self._ids.profile_id)
         if payload == self._last_sent:
             return IDLE_WAIT
+        if payload != self._pending:
+            self._pending = payload
+            self._held = False
 
         now = time.monotonic()
         settling = self._changed_at and now - self._changed_at < SETTLE
         if settling:
             return SETTLE - (now - self._changed_at)
         if not self._limiter.allow(now):
-            return self._limiter.wait_for(now)
+            hold = self._limiter.wait_for(now)
+            self._hold_once(f"⏳ Discord only takes a new status every few seconds; {hold:.0f}s to go")
+            return hold
         if not self._client.ensure_connected():
+            self._hold_once("⏳ Waiting for Discord before the status can change")
             return max(self._client.next_attempt_in(now), 1.0)
 
         sent = self._client.clear() if payload is None else self._client.update(payload)
@@ -283,21 +328,36 @@ class PresenceService:
             return max(self._client.next_attempt_in(now), 1.0)
         self._limiter.consume(now)
         self._last_sent = payload
+        self._held = False
         return IDLE_WAIT
+
+    def _hold_once(self, message: str) -> None:
+        """One line per held update, not one per pass through the loop."""
+        if self._held:
+            return
+        self._held = True
+        self._log.debug(message)
 
     def _escape_stuck_replay(self) -> None:
         """The tailer always reports the end of a replay; publish anyway if it somehow does not."""
         if not self._replaying or not self._live_since:
             return
         if time.monotonic() - self._live_since > REPLAY_GUARD:
+            self._log.debug("🎮 The log replay never reported finishing; showing the status anyway")
             self._replaying = False
             self._mailbox.put(self._machine.snapshot)
 
     def _retire(self) -> None:
-        """Nothing to show: take the status down and let go of the connection."""
         if self._retired:
             return
         self._retired = True
-        self._client.clear()
+        self._take_down()
         self._client.close()
+
+    def _take_down(self) -> None:
+        """Clear the status, but only when one is actually on the profile."""
+        if self._last_sent is None:
+            return
+        self._client.clear()
         self._last_sent = None
+        self._pending = None

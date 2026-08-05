@@ -16,8 +16,7 @@ from totstats.shared.log_tail import LogLine
 # OnlineCoreHttpLogs: Verbose: Operation FCoreUpdatePresenceOperation(83) request body: {...}
 #
 # Anchored on the operation name, never on "request body:" alone: other operations log bodies too
-# and some of them contain session tokens. Verified against real logs: the body is always on the
-# same line as the operation name.
+# and some of them contain session tokens.
 PRESENCE_OP = "FCoreUpdatePresenceOperation"
 REQUEST_BODY = "request body:"
 

@@ -81,8 +81,7 @@ class App:
             name="contribute",
         )
 
-        # A dry run keeps its hands off the installation, so nothing is cached and nothing is
-        # published — the console shows what Discord would have been told instead.
+        # A dry run keeps its hands off the installation: no catalog cache on disk.
         cache_dir = None if args.dry_run else paths.install_dir()
         catalog = load_catalog(self.log, cache_dir)
         self._discord = DiscordClient(

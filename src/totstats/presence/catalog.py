@@ -76,7 +76,6 @@ class Catalog:
         return self.difficulties.get(level) if level is not None else None
 
     def image(self, banner: str | None) -> str:
-        """The artwork URL Discord gets."""
         return f"{ASSET_BASE}{banner or self.default_banner}{ASSET_EXT}"
 
     def profile_link(self, profile_id: str | None) -> str | None:
