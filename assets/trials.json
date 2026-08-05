@@ -20,8 +20,8 @@
     "programBloodDonations": "Blood Drive"
   },
   "invasion_banners": {
-    "reagent": "photo_invasion_reagent",
-    "imposter": "photo_invasion_invader"
+    "reagent": "icon_reagent",
+    "imposter": "icon_invader"
   },
   "trials": {
     "PS_Trial": {"name": "Kill the Snitch", "banner": "photo_PS_Trial", "location": "Police Station"},
