@@ -22,7 +22,7 @@ where = ["src"]
 [tool.ruff]
 line-length = 110
 target-version = "py312"
-src = ["src", "tools"]
+src = ["src"]
 extend-exclude = ["build", "dist"]
 
 [tool.ruff.lint]
