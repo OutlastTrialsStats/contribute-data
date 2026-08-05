@@ -41,9 +41,3 @@ type.
 
 Dependabot uses these types automatically: `deps` for pip packages (they are bundled into the
 executable, so they warrant a release) and `ci` for GitHub Actions (they only affect the workflows).
-
-## Trailers
-
-Do not add `Co-Authored-By` trailers for AI assistants, or "generated with" lines, to commit
-messages or pull request descriptions. The commit body ends with the body. This applies to
-anyone using an AI coding tool on this repository — configure it accordingly.
