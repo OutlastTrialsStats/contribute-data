@@ -7,6 +7,9 @@
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "draft": true,
+      "extra-files": [
+        { "type": "generic", "path": "src/totstats/__init__.py" }
+      ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },

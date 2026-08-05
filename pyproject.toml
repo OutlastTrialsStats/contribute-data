@@ -1,0 +1,35 @@
+# TOTStatsMonitor ships as a PyInstaller executable, never as a wheel on an index. The metadata
+# below exists so that `pip install -e .` puts the src/ layout on the import path during
+# development. The shipped build does not go through it — build.py passes `--paths src` directly.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "totstats"
+description = "Companion app for outlasttrialsstats.com"
+requires-python = ">=3.12"
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools.dynamic]
+version = { attr = "totstats.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src"]
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4"]
+ignore = [
+    "B008",  # function call in default argument — we use it for injected clocks/factories
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["totstats"]
