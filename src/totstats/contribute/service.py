@@ -1,8 +1,4 @@
-"""Wires the log tailer to the contribute API.
-
-on_line runs on the watcher thread and only enqueues; a worker thread performs the HTTP calls,
-so a slow or unreachable API can never stall log reading.
-"""
+"""Wires the log tailer to the contribute API: on_line enqueues, a worker thread sends."""
 
 from __future__ import annotations
 
@@ -48,8 +44,8 @@ class ContributeService:
         self._pending: list[str] = []
         self.stats = ContributeStats()
 
-        #: Checked per line rather than by unsubscribing, so the tray toggle takes effect at
-        #: once. Needs no lock: the watcher thread only ever reads it.
+        # Checked per line rather than by unsubscribing, so the tray toggle takes effect at
+        # once. Needs no lock: the watcher thread only ever reads it.
         self.enabled = True
 
     def start(self) -> None:

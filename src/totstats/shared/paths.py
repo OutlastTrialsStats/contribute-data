@@ -8,7 +8,7 @@ from pathlib import Path
 
 from totstats import APP_NAME
 
-#: Import name of the package; also the directory PyInstaller bundles package data under.
+# Import name of the package; also the directory PyInstaller bundles package data under.
 APP_PACKAGE = "totstats"
 
 

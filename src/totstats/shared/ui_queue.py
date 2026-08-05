@@ -1,7 +1,7 @@
 """Marshals work onto the tkinter main thread.
 
-Tk is not thread-safe and pystray runs its own Win32 message loop on another thread, so tray
-callbacks must not touch widgets directly. They post a callable here; App._main_loop drains it.
+Tk is not thread-safe, so anything off the main thread posts a callable here instead of touching
+widgets. App._main_loop drains it.
 """
 
 from __future__ import annotations

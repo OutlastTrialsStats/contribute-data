@@ -1,8 +1,4 @@
-"""System tray icon.
-
-pystray runs its own Win32 message loop on a dedicated thread, so menu callbacks must not touch
-Tk. Every callback here posts onto the UI queue instead.
-"""
+"""System tray icon. Menu callbacks post onto the UI queue rather than acting directly."""
 
 from __future__ import annotations
 
@@ -17,7 +13,7 @@ from totstats import APP_NAME
 from totstats.shared import windows
 from totstats.shared.ui_queue import UiQueue
 
-#: Sampled from the monogram in icon.ico.
+# Sampled from the monogram in icon.ico.
 _BRAND = (203, 202, 153, 255)
 
 
@@ -27,8 +23,8 @@ class TrayCallbacks:
     uninstall: Callable[[], None]
     quit: Callable[[], None]
     status_text: Callable[[], str]
-    #: Checkbox state readers. pystray calls these on the tray thread every time the menu is
-    #: opened, so they must only read — never touch Tk, never write settings.
+    # Checkbox state readers. pystray calls these on the tray thread every time the menu is
+    # opened, so they must only read — never touch Tk, never write settings.
     autostart_enabled: Callable[[], bool]
     contribute_enabled: Callable[[], bool]
     toggle_autostart: Callable[[], None]
@@ -58,7 +54,7 @@ class _SizedIcon(pystray.Icon):
     _show(), and with it this method.
     """
 
-    #: Assigned after construction. None falls back to pystray's own loading.
+    # Assigned after construction. None falls back to pystray's own loading.
     _icon_file: Path | None = None
 
     def _assert_icon_handle(self) -> None:
@@ -141,5 +137,5 @@ class TrayIcon:
     def notify(self, message: str, title: str | None = None) -> None:
         try:
             self._icon.notify(message, title or APP_NAME)
-        except Exception:  # noqa: BLE001 - balloon tips are best-effort
+        except Exception:  # noqa: BLE001
             pass

@@ -2,15 +2,7 @@
 
 Five independent sources carry it, because the authentication line alone is missing whenever the
 app starts after login — the normal case for a mid-session launch, and guaranteed once replay is
-capped.
-
-Sources in resolution order:
-
-1. ``?EncryptionToken=`` on a server ``LoadMap`` — earliest, and present on every map load
-2. ``Client authentication succeeded. Profile ID: ...`` — only at login
-3. the presence POST URL ``/presence/public/profiles/<uuid>/presence``
-4. the third segment of an RTA ``parties|`` / ``matchmaking-tickets|`` data item id
-5. ``Player Init Replicated ... IsLocallyControlled = Yes``
+capped. The sources are described in doc/log-format.md; _PATTERNS below is their search order.
 """
 
 from __future__ import annotations

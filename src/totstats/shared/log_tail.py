@@ -1,17 +1,8 @@
 """Incremental tailing of the game's Unreal Engine log, shared by every feature.
 
-One tailer serves all subscribers so the log is read once, not once per feature.
-
-Two details carry most of the correctness weight:
-
-* **The file is read in binary and split on newlines before decoding.** Polling several times a
-  second means we routinely read while the game is halfway through writing a line. Anything that
-  hands a partial line to a parser produces rare, unreproducible nonsense — a truncated JSON body
-  or a mangled UUID. The trailing partial line is held back until its newline arrives.
-* **The file handle is not kept open between polls.** CPython opens files without
-  FILE_SHARE_DELETE on Windows, so a persistent handle would prevent the game from renaming
-  OPP.log during its own log rotation. Each poll opens, seeks to the stored offset, reads, and
-  closes; at a few hundred bytes per poll that costs nothing.
+One tailer serves all subscribers so the log is read once, not once per feature. Why it reads
+the way it does — binary reads split on newlines, no handle kept open between polls, OPP.log
+preferred over newest-by-mtime — is in doc/architecture.md.
 """
 
 from __future__ import annotations
@@ -25,7 +16,7 @@ from pathlib import Path
 
 from totstats.shared.applog import AppLog
 
-#: [2026.08.02-15.35.43:756][138]RB:  GamePhase changed to ...
+# [2026.08.02-15.35.43:756][138]RB:  GamePhase changed to ...
 LINE_PREFIX_RE = re.compile(
     r"^\[(\d{4})\.(\d{2})\.(\d{2})-(\d{2})\.(\d{2})\.(\d{2}):(\d{3})\]\[\s*(\d+)\](.*)$"
 )
@@ -193,11 +184,7 @@ class LogTailer:
         return self._read_and_dispatch(path)
 
     def _select_file(self) -> Path | None:
-        """OPP.log is always the live file; fall back to newest-by-mtime only if it is absent.
-
-        Picking newest-by-mtime unconditionally is a trap: during rotation the just-renamed
-        backup briefly has the newer mtime, and the tailer would follow a dead file.
-        """
+        """OPP.log is always the live file; fall back to newest-by-mtime only if it is absent."""
         primary = self._logs_dir / self._primary_name
         try:
             if primary.is_file():

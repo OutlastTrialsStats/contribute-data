@@ -1,8 +1,7 @@
 """Windows autostart via the HKCU Run key.
 
-The value name is load-bearing: installations out in the wild carry an older one, and writing a
-differently named value would leave the old entry behind and start the app twice. See
-migrate_legacy().
+The value name is load-bearing — installations out in the wild carry an older one. See
+migrate_legacy() and doc/settings.md.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from totstats.shared import paths
 RUN_KEY = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 VALUE_NAME = APP_NAME
 
-#: Names used by earlier releases, newest first. Read and cleaned up, never written.
+# Names used by earlier releases, newest first. Read and cleaned up, never written.
 LEGACY_VALUE_NAMES = ("OutlastTrialsMonitor",)
 
 if sys.platform == "win32":

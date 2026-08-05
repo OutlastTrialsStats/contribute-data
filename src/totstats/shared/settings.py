@@ -1,12 +1,7 @@
 """Persistent user settings, stored as JSON next to the installation.
 
-Two rules govern everything here:
-
-* **Reading never fails.** A missing, unreadable, truncated or hand-edited file yields defaults
-  and a warning, never an exception — the build runs with --noconsole, so an exception during
-  startup is an invisible crash.
-* **Writing is atomic.** The file is written beside itself and renamed into place, so a crash or
-  a full disk mid-write leaves the previous settings intact.
+Reading never raises and writing is atomic; doc/settings.md has the schema and the exact
+behaviour for every way the file can be broken.
 """
 
 from __future__ import annotations
@@ -19,21 +14,21 @@ from pathlib import Path
 
 from totstats.shared.applog import AppLog
 
-#: Bumped only when a change cannot be expressed by adding a field with a default.
+# Bumped only when a change cannot be expressed by adding a field with a default.
 SCHEMA_VERSION = 1
 
 
 @dataclass
 class Features:
     contribute: bool = True
-    #: Reserved for the Discord Rich Presence feature; written from the start so that enabling
-    #: it later is a value change, not a format change.
+    # Reserved for the Discord Rich Presence feature; written from the start so that enabling
+    # it later is a value change, not a format change.
     presence: bool = False
 
 
 @dataclass
 class Settings:
-    #: None = the user has not been asked yet.
+    # None = the user has not been asked yet.
     autostart: bool | None = None
     features: Features = field(default_factory=Features)
 
@@ -90,7 +85,6 @@ class SettingsStore:
         try:
             text = self._path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            # First start. Not worth a warning.
             return self.settings
         except OSError as exc:
             self._warn(f"could not read settings ({exc}); using defaults")

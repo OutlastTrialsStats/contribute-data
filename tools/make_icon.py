@@ -22,25 +22,25 @@ SOURCE = ROOT / "tools" / "icon-source.png"
 TARGET = ROOT / "icon.ico"
 PREVIEW = ROOT / "tools" / "icon-preview.png"
 
-#: The tray never asks for more than 32: 16 at 100% scaling, 24 at 150%, 32 at 200%.
+# The tray never asks for more than 32: 16 at 100% scaling, 24 at 150%, 32 at 200%.
 GLYPH_SIZES = (16, 20, 24, 32)
-#: Explorer, the desktop and Alt-Tab, where the badge has room to work.
+# Explorer, the desktop and Alt-Tab, where the badge has room to work.
 BADGE_SIZES = (48, 64, 256)
 
-#: Luminance below the first is background, above the second is monogram, between is the edge.
+# Luminance below the first is background, above the second is monogram, between is the edge.
 CUTOFF_LOW = 90
 CUTOFF_HIGH = 170
 
-#: The artwork's brightest pixel. Painting it on flat removes the photographic grain, which
-#: would otherwise turn into speckle when downscaled.
+# The artwork's brightest pixel. Painting it on flat removes the photographic grain, which
+# would otherwise turn into speckle when downscaled.
 GLYPH_RGB = (203, 202, 153)
 
-#: Applied to the alpha channel after downscaling, to bring back strokes that LANCZOS spread
-#: into grey. Lower where less of each stroke lands on a whole pixel.
-#:
-#: Thickening the strokes beforehand is the obvious alternative and it does not work: the gaps in
-#: this monogram are narrower than the strokes, so dilation closes the negative space before it
-#: rescues anything, and 16px turns into a filled blob.
+# Applied to the alpha channel after downscaling, to bring back strokes that LANCZOS spread
+# into grey. Lower where less of each stroke lands on a whole pixel.
+#
+# Thickening the strokes beforehand is the obvious alternative and it does not work: the gaps in
+# this monogram are narrower than the strokes, so dilation closes the negative space before it
+# rescues anything, and 16px turns into a filled blob.
 ALPHA_GAMMA = {16: 0.55, 20: 0.60, 24: 0.65, 32: 0.75}
 
 

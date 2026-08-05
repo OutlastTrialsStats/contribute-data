@@ -1,15 +1,7 @@
 """Application wiring and lifecycle.
 
-Threads:
-
-============  ==========================================================================
-main          Tk (hidden root, console window), draining the UI queue
-tray          pystray's Win32 message loop
-watcher       game process detection and log tailing; dispatches lines to services
-contribute    the HTTP worker owned by ContributeService
-============  ==========================================================================
-
-Only the main thread touches Tk, and only the watcher thread touches parser state.
+Starts the four threads the app runs on and owns the shutdown order. Which thread may touch
+what is in doc/architecture.md.
 """
 
 from __future__ import annotations

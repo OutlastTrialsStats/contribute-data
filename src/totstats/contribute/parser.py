@@ -7,11 +7,10 @@ from dataclasses import dataclass
 
 from totstats.shared.log_tail import LogLine
 
-#: RB:  [Name] Player Init Replicated. Player Id = Name [TAG] [uuid],  Player Slot = 3,
-#:      IsLocallyControlled = No
-#:
-#: Anchored on the UUID rather than on the brackets around the display name: names may contain
-#: brackets themselves. A name like "marcy :]" defeats a bracket-anchored pattern.
+# RB:  [Name] Player Init Replicated. Player Id = Name [TAG] [uuid],  Player Slot = 3,
+#      IsLocallyControlled = No
+#
+# Anchored on the UUID, not on the brackets around the display name — see doc/log-format.md.
 PLAYER_RE = re.compile(
     r"Player Init Replicated\. Player Id = (?P<name>.*?) \[(?P<tag>[^\]]*)\] "
     r"\[(?P<uuid>[0-9a-fA-F-]{36})\],\s+Player Slot = (?P<slot>\d+), "

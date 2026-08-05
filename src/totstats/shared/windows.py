@@ -19,7 +19,7 @@ _LR_LOADFROMFILE = 0x00000010
 _PROCESS_PER_MONITOR_DPI_AWARE = 2
 _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4)
 
-#: What the notification area asks for at 100% scaling.
+# What the notification area asks for at 100% scaling.
 DEFAULT_SMALL_ICON = 16
 
 try:

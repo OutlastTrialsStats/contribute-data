@@ -95,6 +95,5 @@ class ConsoleWindow:
             self._text.see(tk.END)
             self._text.configure(state=tk.DISABLED)
         except tk.TclError:
-            # The window was destroyed from outside our control.
             self._window = None
             self._text = None
