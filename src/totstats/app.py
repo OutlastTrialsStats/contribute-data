@@ -100,9 +100,8 @@ class App:
 
         self._root = tk.Tk()
         self._root.withdraw()
-        # Tk sizes fonts in points against an assumed 72 dpi. Now that the process is DPI aware
-        # and no longer gets stretched, it has to do that scaling itself or the text comes out
-        # tiny on a scaled display.
+        # Nothing stretches the process any more, so Tk has to scale its own points or the text
+        # comes out tiny on a scaled display.
         self._root.tk.call("tk", "scaling", self._root.winfo_fpixels("1i") / 72.0)
         self._console = ConsoleWindow(self._root, self.log, paths.icon_path())
 

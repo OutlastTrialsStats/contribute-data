@@ -1,12 +1,8 @@
 """Windows display metrics and DPI awareness.
 
-Both live here because they are the same problem seen twice: Windows scales anything that does
-not ask for the right size itself. Awareness has to be set before the first window exists, which
-is why enable_dpi_awareness() is called from __main__ rather than from whoever needs it.
-
-The user32 and shcore handles are created with WinDLL rather than taken from ctypes.windll.
-ctypes caches windll instances and the function pointers hanging off them, so reusing them would
-share argtypes and errcheck with pystray, which configures the very same functions.
+The handles come from WinDLL, not from ctypes.windll: windll caches its instances and the
+function pointers on them, so reusing it would share argtypes and errcheck with pystray, which
+configures the very same functions.
 """
 
 from __future__ import annotations
@@ -23,7 +19,7 @@ _LR_LOADFROMFILE = 0x00000010
 _PROCESS_PER_MONITOR_DPI_AWARE = 2
 _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4)
 
-#: What the notification area asks for at 100% scaling, and what to assume if Windows will not say.
+#: What the notification area asks for at 100% scaling.
 DEFAULT_SMALL_ICON = 16
 
 try:
@@ -42,8 +38,8 @@ except (AttributeError, OSError):  # pragma: no cover - not Windows
 def enable_dpi_awareness() -> bool:
     """Opt out of Windows' bitmap stretching. Call before creating any window.
 
-    Newest API first, because each older one is coarser than the last. All of them fail once
-    awareness is already set — by an embedding host or a manifest — which is not an error.
+    All three fail once awareness is already set — by a manifest or an embedding host — which is
+    not an error.
     """
     if _user32 is None:
         return False
@@ -68,10 +64,7 @@ def enable_dpi_awareness() -> bool:
 
 
 def small_icon_size() -> int:
-    """The edge length the notification area draws icons at: 16 at 100%, 24 at 150%, 32 at 200%.
-
-    Reports the primary monitor's value, which is the one the taskbar lives on.
-    """
+    """The primary monitor's tray icon size: 16 at 100% scaling, 24 at 150%, 32 at 200%."""
     if _user32 is None:
         return DEFAULT_SMALL_ICON
     try:
@@ -81,10 +74,10 @@ def small_icon_size() -> int:
 
 
 def load_icon(path: Path, size: int) -> int | None:
-    """An HICON of exactly `size`, taken from the matching frame in an .ico file.
+    """An HICON of exactly `size` from the matching frame of an .ico, or None.
 
-    None when the file is missing or holds no usable frame. The caller owns the handle and must
-    pass it to DestroyIcon; LR_SHARED is deliberately not used, which would forbid that.
+    The caller owns the handle and must pass it to DestroyIcon; LR_SHARED is deliberately not
+    used, which would forbid that.
     """
     if _user32 is None:
         return None

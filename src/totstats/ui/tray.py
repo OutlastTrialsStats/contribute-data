@@ -17,7 +17,7 @@ from totstats import APP_NAME
 from totstats.shared import windows
 from totstats.shared.ui_queue import UiQueue
 
-#: Sampled from the monogram in icon.ico, for the placeholder drawn when that file is missing.
+#: Sampled from the monogram in icon.ico.
 _BRAND = (203, 202, 153, 255)
 
 
@@ -36,8 +36,6 @@ class TrayCallbacks:
 
 
 def load_icon_image(icon_path: Path) -> Image.Image:
-    """The icon as a PIL image. A missing icon.ico is a packaging fault, not a user situation,
-    so the placeholder only has to be inoffensive at 16 pixels — hence no glyph and no text."""
     if icon_path.exists():
         try:
             return Image.open(icon_path)
@@ -52,12 +50,12 @@ class _SizedIcon(pystray.Icon):
     """Loads the tray icon at the size the notification area actually draws.
 
     pystray asks LoadImage for LR_DEFAULTSIZE, which resolves to SM_CXICON — the 32px desktop
-    icon, not the 16px SM_CXSMICON the tray uses — and the shell then squeezes the result down
-    itself. Handing pystray a smaller image does not help: LR_DEFAULTSIZE scales a 16px source
-    up to 32 first. Reading the .ico at the size we want skips both resamples.
+    icon, not the 16px SM_CXSMICON the tray uses — and the shell squeezes the result down itself.
+    Handing pystray a smaller image does not help: LR_DEFAULTSIZE scales a 16px source up to 32
+    first. Reading the .ico at the size we want skips both resamples.
 
-    The size is resolved per call rather than once, so the icon stays correct after a display
-    change: pystray re-runs _show(), and with it this method, on WM_DISPLAYCHANGE.
+    Resolved per call, not once, so WM_DISPLAYCHANGE picks up a new size: pystray re-runs
+    _show(), and with it this method.
     """
 
     #: Assigned after construction. None falls back to pystray's own loading.

@@ -1,15 +1,13 @@
 """Builds icon.ico from tools/icon-source.png.
 
 An .ico holds independent images, and the frames here deliberately are not the same picture.
-Below 32 pixels the badge does not survive: its background becomes a coloured square wedged
-between the transparent icons of every other program, and the monogram's hairlines dissolve into
-grey. Those sizes get the monogram alone, cut out and thickened. From 48 up, where there is room
-for it, the badge stays as it is.
+Below 32 pixels the badge does not survive: an opaque square among transparent icons, and
+hairlines that dissolve into grey. Those sizes get the monogram alone, cut out. From 48 up the
+badge stays as it is.
 
     python tools/make_icon.py [--preview]
 
---preview additionally writes tools/icon-preview.png, every frame magnified without smoothing,
-which is the only honest way to judge the small ones.
+--preview also writes tools/icon-preview.png, every frame magnified without smoothing.
 """
 
 from __future__ import annotations
@@ -33,17 +31,16 @@ BADGE_SIZES = (48, 64, 256)
 CUTOFF_LOW = 90
 CUTOFF_HIGH = 170
 
-#: Flat colour for the cut-out monogram, sampled from the brightest pixel of the artwork. Painting
-#: it on removes the photographic grain, which would otherwise turn into speckle when downscaled.
+#: The artwork's brightest pixel. Painting it on flat removes the photographic grain, which
+#: would otherwise turn into speckle when downscaled.
 GLYPH_RGB = (203, 202, 153)
 
-#: Applied to the alpha channel after downscaling: below 1.0 it pushes partial coverage towards
-#: opaque, so strokes that LANCZOS spread into grey come back as a visible mark. Lower for the
-#: smaller frames, where less of each stroke lands on a whole pixel.
+#: Applied to the alpha channel after downscaling, to bring back strokes that LANCZOS spread
+#: into grey. Lower where less of each stroke lands on a whole pixel.
 #:
-#: Thickening the strokes before downscaling is the obvious alternative and it does not work. The
-#: gaps in this monogram are narrower than the strokes, so dilation closes the negative space
-#: before it rescues anything, and 16px turns into a filled blob.
+#: Thickening the strokes beforehand is the obvious alternative and it does not work: the gaps in
+#: this monogram are narrower than the strokes, so dilation closes the negative space before it
+#: rescues anything, and 16px turns into a filled blob.
 ALPHA_GAMMA = {16: 0.55, 20: 0.60, 24: 0.65, 32: 0.75}
 
 
