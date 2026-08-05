@@ -2,7 +2,7 @@
 
 Five independent sources carry it, because the authentication line alone is missing whenever the
 app starts after login — the normal case for a mid-session launch, and guaranteed once replay is
-capped. The sources are described in doc/log-format.md; _PATTERNS below is their search order.
+capped. _PATTERNS below is their search order.
 """
 
 from __future__ import annotations

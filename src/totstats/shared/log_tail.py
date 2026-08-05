@@ -1,8 +1,6 @@
 """Incremental tailing of the game's Unreal Engine log, shared by every feature.
 
-One tailer serves all subscribers so the log is read once, not once per feature. Why it reads
-the way it does — binary reads split on newlines, no handle kept open between polls, OPP.log
-preferred over newest-by-mtime — is in doc/architecture.md.
+One tailer serves all subscribers so the log is read once, not once per feature.
 """
 
 from __future__ import annotations

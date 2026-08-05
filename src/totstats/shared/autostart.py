@@ -1,7 +1,8 @@
 """Windows autostart via the HKCU Run key.
 
-The value name is load-bearing — installations out in the wild carry an older one. See
-migrate_legacy() and doc/settings.md.
+The value name is load-bearing — installations out in the wild carry an older one, and a
+differently named value would leave the old entry behind and start the app twice. See
+migrate_legacy().
 """
 
 from __future__ import annotations
