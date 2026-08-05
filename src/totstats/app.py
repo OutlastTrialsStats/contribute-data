@@ -28,8 +28,10 @@ from totstats.shared.applog import AppLog
 from totstats.shared.game_process import GameProcessEvent, GameProcessWatcher
 from totstats.shared.log_tail import LogTailer
 from totstats.shared.profile_id import OwnProfileIdResolver
+from totstats.shared.settings import SettingsStore
 from totstats.shared.ui_queue import UiQueue
 from totstats.ui.console_window import ConsoleWindow
+from totstats.ui.first_run import ask_autostart
 from totstats.ui.tray import TrayCallbacks, TrayIcon
 
 #: How often to poll the log while the game is running. Fast enough that state is fresh,
@@ -68,6 +70,11 @@ class App:
         )
         self.log.rotate_if_large()
 
+        # A dry run must not adopt or overwrite the real installation's settings either, so it
+        # gets an in-memory store that starts from the defaults.
+        self.store = SettingsStore(None if args.dry_run else paths.settings_path(), self.log)
+        self.settings = self.store.load()
+
         self.ui = UiQueue(self.log)
         self._root: tk.Tk | None = None
         self._console: ConsoleWindow | None = None
@@ -79,6 +86,7 @@ class App:
         self._tailer = LogTailer(logs_dir, log=self.log)
         self._api = ContributeApi(dry_run=args.dry_run)
         self.contribute = ContributeService(self._api, self._ids, self.log)
+        self.contribute.enabled = self.settings.features.contribute
 
         self._tailer.subscribe(
             self.contribute.on_line,
@@ -92,6 +100,8 @@ class App:
     def status_text(self) -> str:
         if self.args.dry_run:
             return "Dry run"
+        if not self.settings.features.contribute:
+            return "Paused"
         return "Monitoring" if self._game.running else "Waiting for game"
 
     # -- lifecycle -----------------------------------------------------------
@@ -100,12 +110,15 @@ class App:
         self.log.info(f"🚀 {APP_NAME} v{__version__} started")
         if self.args.dry_run:
             self.log.info("🧪 Dry run: reading logs without the game, nothing is sent")
-        else:
-            autostart.enable()
 
         self._root = tk.Tk()
         self._root.withdraw()
         self._console = ConsoleWindow(self._root, self.log, paths.icon_path())
+
+        # After the root exists: the first-run prompt needs a parent window. Before the tray and
+        # the watcher start, so the answer is recorded even if the user quits immediately.
+        if not self.args.dry_run:
+            self._resolve_autostart()
 
         self.contribute.start()
 
@@ -119,6 +132,10 @@ class App:
                 uninstall=self._uninstall,
                 quit=self.request_quit,
                 status_text=self.status_text,
+                autostart_enabled=lambda: bool(self.settings.autostart),
+                contribute_enabled=lambda: self.settings.features.contribute,
+                toggle_autostart=self._toggle_autostart,
+                toggle_contribute=self._toggle_contribute,
             ),
             paths.icon_path(),
         )
@@ -139,6 +156,63 @@ class App:
     def _open_console(self) -> None:
         if self._console is not None:
             self._console.open()
+
+    # -- settings ------------------------------------------------------------
+
+    def _resolve_autostart(self) -> None:
+        """Settle the autostart question once, then keep the registry matching the answer.
+
+        Earlier versions wrote the Run entry on every start without ever asking. Anyone updating
+        from one of those has already lived with autostart, so an existing entry counts as
+        consent and is adopted silently rather than prompted for again.
+        """
+        if self.settings.autostart is None:
+            if autostart.migrate_legacy():
+                self.settings.autostart = True
+                self.log.info("✅ Autostart carried over from a previous version")
+            elif autostart.is_enabled():
+                self.settings.autostart = True
+            elif self.args.silent:
+                # Started in the background with nothing recorded: a dialog here would appear
+                # out of nowhere. Leave it open and ask on the next interactive start.
+                return
+            else:
+                assert self._root is not None
+                self.settings.autostart = ask_autostart(self._root)
+                self.log.info(
+                    "✅ Autostart enabled"
+                    if self.settings.autostart
+                    else "ℹ️ Autostart declined — start it yourself whenever you want to help"
+                )
+            self.store.save()
+
+        if self.settings.autostart:
+            autostart.enable()
+        else:
+            autostart.disable()
+
+    def _toggle_autostart(self) -> None:
+        if self.args.dry_run:
+            self.log.info("🧪 Dry run: the autostart entry is left untouched")
+            return
+        enabled = not bool(self.settings.autostart)
+        self.settings.autostart = enabled
+        if enabled and not autostart.enable():
+            self.log.warning("⚠️ Could not write the autostart entry")
+        elif not enabled:
+            autostart.disable()
+        self.store.save()
+        self.log.info("✅ Autostart enabled" if enabled else "ℹ️ Autostart disabled")
+
+    def _toggle_contribute(self) -> None:
+        enabled = not self.settings.features.contribute
+        self.settings.features.contribute = enabled
+        self.contribute.enabled = enabled
+        self.store.save()
+        self.log.info(
+            "✅ Contributing player data" if enabled else "⏸️ Contributing paused — nothing is sent"
+        )
+        self._update_tray()
 
     def _uninstall(self) -> None:
         self._uninstalling = True

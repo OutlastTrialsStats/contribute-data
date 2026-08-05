@@ -48,6 +48,11 @@ class ContributeService:
         self._pending: list[str] = []
         self.stats = ContributeStats()
 
+        #: Mirrors the user's setting. Checked per line rather than by unsubscribing, so the
+        #: tray toggle takes effect immediately instead of at the next start. Plain attribute
+        #: assignment on a bool needs no lock; the watcher thread only ever reads it.
+        self.enabled = True
+
     # -- lifecycle -----------------------------------------------------------
 
     def start(self) -> None:
@@ -80,6 +85,9 @@ class ContributeService:
         self._ids.reset()
 
     def on_line(self, line: LogLine) -> None:
+        if not self.enabled:
+            return
+
         learned = self._ids.feed(line)
         if learned is not None:
             self._log.info(f"🆔 Player ID found: {learned[:8]}…")

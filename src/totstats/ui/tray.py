@@ -23,6 +23,12 @@ class TrayCallbacks:
     uninstall: Callable[[], None]
     quit: Callable[[], None]
     status_text: Callable[[], str]
+    #: Checkbox state readers. pystray calls these on the tray thread every time the menu is
+    #: opened, so they must only read — never touch Tk, never write settings.
+    autostart_enabled: Callable[[], bool]
+    contribute_enabled: Callable[[], bool]
+    toggle_autostart: Callable[[], None]
+    toggle_contribute: Callable[[], None]
 
 
 def load_icon_image(icon_path: Path) -> Image.Image:
@@ -56,6 +62,17 @@ class TrayIcon:
                 lambda _item: f"Status: {self._callbacks.status_text()}", None, enabled=False
             ),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "Contribute player data",
+                self._on_toggle_contribute,
+                checked=lambda _item: self._callbacks.contribute_enabled(),
+            ),
+            pystray.MenuItem(
+                "Start with Windows",
+                self._on_toggle_autostart,
+                checked=lambda _item: self._callbacks.autostart_enabled(),
+            ),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Console", self._on_console),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Uninstall", self._on_uninstall),
@@ -66,6 +83,12 @@ class TrayIcon:
 
     def _on_console(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.open_console)
+
+    def _on_toggle_autostart(self, _icon: object, _item: object) -> None:
+        self._ui.post(self._callbacks.toggle_autostart)
+
+    def _on_toggle_contribute(self, _icon: object, _item: object) -> None:
+        self._ui.post(self._callbacks.toggle_contribute)
 
     def _on_uninstall(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.uninstall)
