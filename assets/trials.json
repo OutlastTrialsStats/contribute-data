@@ -2,7 +2,7 @@
   "schema": 1,
   "revision": 1,
   "updated": "2026-08-05",
-  "default_banner": "OutlastTrialLogo",
+  "default_banner": "murkoff_logo",
   "profile_url": "https://outlasttrialsstats.com/profile/{profile_id}",
   "difficulties": {
     "1": "Introductory",
