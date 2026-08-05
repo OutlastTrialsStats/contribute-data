@@ -20,11 +20,9 @@ MIN_PARTY = 2
 
 SEPARATOR = " • "
 GAME_NAME = "The Outlast Trials"
-PROFILE_BUTTON = "Player Stats"
+PROFILE_BUTTON = "Look at Stats"
 
 _QUIET = (Activity.UNKNOWN, Activity.OFFLINE)
-
-
 @dataclass(frozen=True)
 class Payload:
     details: str
@@ -68,7 +66,12 @@ def _clip(text: str) -> str:
     return text[:MAX_TEXT]
 
 
-def render(state: GameState, catalog: Catalog, profile_id: str | None = None) -> Payload | None:
+def render(
+    state: GameState,
+    catalog: Catalog,
+    profile_id: str | None = None,
+    session_start: float | None = None,
+) -> Payload | None:
     """The status to show, or None when there should be no status at all."""
     if state.activity in _QUIET:
         return None
@@ -86,6 +89,10 @@ def render(state: GameState, catalog: Catalog, profile_id: str | None = None) ->
         party_id = state.party_key or "party"
         party_size = (state.party_size, max(state.party_max, state.party_size))
 
+    # Discord counts from whatever timestamp it last got; leaving it out does not hide the counter,
+    # it restarts it on every update. So the session anchor carries it outside a trial.
+    start = state.trial_started_at if state.in_trial and state.trial_started_at else session_start
+
     link = catalog.profile_link(profile_id)
     large_text = GAME_NAME
     if trial is not None:
@@ -100,7 +107,7 @@ def render(state: GameState, catalog: Catalog, profile_id: str | None = None) ->
         small_text=small_text,
         party_id=party_id,
         party_size=party_size,
-        start=int(state.trial_started_at) if state.in_trial and state.trial_started_at else None,
+        start=int(start) if start else None,
         buttons=((PROFILE_BUTTON, link),) if link else (),
     )
 
@@ -119,7 +126,7 @@ def _describe(
     if state.activity is Activity.RETURNING:
         return "Sleep Room", "Returning from a Trial"
     if state.activity is Activity.SLEEP_ROOM:
-        return "Sleep Room", "Getting ready"
+        return "Sleep Room", "Idle"
     if state.activity is Activity.PREPARING and trial is None:
         # The trial is picked but not announced yet; the player is still standing in the lobby.
         return "Sleep Room", "Preparing a Trial"

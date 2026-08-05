@@ -155,6 +155,7 @@ class PresenceService:
         self._worker: threading.Thread | None = None
 
         self._state = GameState()
+        self._session_start: float | None = None
         self._last_sent: Payload | None = None
         self._pending: Payload | None = None
         self._held = False
@@ -259,8 +260,9 @@ class PresenceService:
         self._catalog = catalog
         self._mailbox.nudge()
 
-    def on_game_started(self) -> None:
+    def on_game_started(self, started_at: float | None = None) -> None:
         self.game_running = True
+        self._session_start = started_at or time.time()
         self._machine.reset()
         self._replaying = True
         self._live_since = 0.0
@@ -268,6 +270,7 @@ class PresenceService:
 
     def on_game_stopped(self) -> None:
         self.game_running = False
+        self._session_start = None
         self._machine.reset()
         self._replaying = True
         self._live_since = 0.0
@@ -303,8 +306,11 @@ class PresenceService:
             self._retire()
             return IDLE_WAIT
         self._retired = False
+        # A dry run never sees a game process, so the anchor falls back to the first status shown.
+        if self._session_start is None:
+            self._session_start = time.time()
 
-        payload = render(self._state, self._catalog, self._ids.profile_id)
+        payload = render(self._state, self._catalog, self._ids.profile_id, self._session_start)
         if payload == self._last_sent:
             return IDLE_WAIT
         if payload != self._pending:

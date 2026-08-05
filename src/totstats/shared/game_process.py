@@ -13,6 +13,7 @@ PROCESS_MARKER = "TOTClient"
 class GameProcessEvent:
     running: bool
     pid: int | None
+    started_at: float | None = None
 
 
 class GameProcessWatcher:
@@ -35,13 +36,22 @@ class GameProcessWatcher:
     def pid(self) -> int | None:
         return self._process.pid if self._process is not None else None
 
+    @property
+    def started_at(self) -> float | None:
+        if self._process is None:
+            return None
+        try:
+            return self._process.create_time()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
+
     def poll(self) -> GameProcessEvent | None:
         """Returns an event only when the running state changed since the last poll."""
         was_running = self._process is not None
         now_running = self._refresh()
         if was_running == now_running:
             return None
-        return GameProcessEvent(running=now_running, pid=self.pid)
+        return GameProcessEvent(running=now_running, pid=self.pid, started_at=self.started_at)
 
     def reset(self) -> None:
         self._process = None

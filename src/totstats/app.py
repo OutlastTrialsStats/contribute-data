@@ -272,7 +272,7 @@ class App:
             self._ids.reset()
             self._tailer.reset()
             self.contribute.on_rotate()
-            self.presence.on_game_started()
+            self.presence.on_game_started(event.started_at)
         else:
             self.log.info("🛑 The Outlast Trials closed, monitoring stopped")
             self._tailer.reset()
