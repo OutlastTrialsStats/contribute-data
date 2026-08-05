@@ -27,8 +27,10 @@ class TrayCallbacks:
     # opened, so they must only read — never touch Tk, never write settings.
     autostart_enabled: Callable[[], bool]
     contribute_enabled: Callable[[], bool]
+    presence_enabled: Callable[[], bool]
     toggle_autostart: Callable[[], None]
     toggle_contribute: Callable[[], None]
+    toggle_presence: Callable[[], None]
 
 
 def load_icon_image(icon_path: Path) -> Image.Image:
@@ -92,6 +94,11 @@ class TrayIcon:
                 checked=lambda _item: self._callbacks.contribute_enabled(),
             ),
             pystray.MenuItem(
+                "Discord Rich Presence",
+                self._on_toggle_presence,
+                checked=lambda _item: self._callbacks.presence_enabled(),
+            ),
+            pystray.MenuItem(
                 "Start with Windows",
                 self._on_toggle_autostart,
                 checked=lambda _item: self._callbacks.autostart_enabled(),
@@ -111,6 +118,9 @@ class TrayIcon:
 
     def _on_toggle_contribute(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.toggle_contribute)
+
+    def _on_toggle_presence(self, _icon: object, _item: object) -> None:
+        self._ui.post(self._callbacks.toggle_presence)
 
     def _on_uninstall(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.uninstall)

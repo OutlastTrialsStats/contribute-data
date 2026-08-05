@@ -75,8 +75,8 @@ def build(version):
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--noconsole",
-        "--icon", "icon.ico",
-        "--add-data", "icon.ico;.",
+        "--icon", "assets/icon.ico",
+        "--add-data", "assets;assets",
         "--name", "TOTStatsMonitor",
         "--version-file", "version_info.txt",
         # src layout: the totstats package is not on the default path.

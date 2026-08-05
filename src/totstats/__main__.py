@@ -35,6 +35,14 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
             "API; use with --logs-dir to replay a recorded session"
         ),
     )
+    parser.add_argument(
+        "--presence-connect",
+        action="store_true",
+        help=(
+            "during a dry run, still show the status on Discord; the only way to see the Rich "
+            "Presence without the game running"
+        ),
+    )
     parser.add_argument("--verbose", action="store_true", help="log at debug level")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
     return parser.parse_args(list(argv))

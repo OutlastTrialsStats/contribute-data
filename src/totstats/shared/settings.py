@@ -21,9 +21,7 @@ SCHEMA_VERSION = 1
 @dataclass
 class Features:
     contribute: bool = True
-    # Reserved for the Discord Rich Presence feature; written from the start so that enabling
-    # it later is a value change, not a format change.
-    presence: bool = False
+    presence: bool = True
 
 
 @dataclass
@@ -50,7 +48,7 @@ def _parse(raw: object) -> Settings:
     features = raw.get("features")
     if isinstance(features, dict):
         settings.features.contribute = _as_bool(features.get("contribute"), True)
-        settings.features.presence = _as_bool(features.get("presence"), False)
+        settings.features.presence = _as_bool(features.get("presence"), True)
 
     return settings
 
