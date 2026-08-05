@@ -1,5 +1,40 @@
 # Changelog
 
+## [3.0.0](https://github.com/OutlastTrialsStats/totstats-monitor/compare/v2.0.1...v3.0.0) (2026-08-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Introduce trial catalog and Discord Rich Presence integration
+
+### Features
+
+* Add changelog sections and commit convention documentation ([ef4adf6](https://github.com/OutlastTrialsStats/totstats-monitor/commit/ef4adf64ec40d411a3bb387c557ad318349c6e1a))
+* Add changelog sections and commit convention documentation ([7f3b55a](https://github.com/OutlastTrialsStats/totstats-monitor/commit/7f3b55a7872bd930ed865d9aa6d1c4cacba23648))
+* Add release automation workflow using release-please and update build process ([187b6b0](https://github.com/OutlastTrialsStats/totstats-monitor/commit/187b6b0890aaaea8c159093149e2e4d1480c11d9))
+* Add release automation workflow using release-please and update… ([6be4a94](https://github.com/OutlastTrialsStats/totstats-monitor/commit/6be4a94757efec5f0da597aa4421ed78d4bee3ae))
+* Introduce trial catalog and Discord Rich Presence integration ([a9634de](https://github.com/OutlastTrialsStats/totstats-monitor/commit/a9634de153979d9faf78cbff30dcd671d9925445))
+* Track session start time for Discord presence integration ([564c542](https://github.com/OutlastTrialsStats/totstats-monitor/commit/564c542fe853c5ed948df536298070e05360d891))
+
+
+### Miscellaneous Chores
+
+* **main:** release 2.0.0 ([9b1b864](https://github.com/OutlastTrialsStats/totstats-monitor/commit/9b1b864d93245344291a278ad193d2089658d6c6))
+* **main:** release 2.0.0 ([842a69f](https://github.com/OutlastTrialsStats/totstats-monitor/commit/842a69fc2258797bad47383ca90cefab5e822c8a))
+* **main:** release 2.0.1 ([616d160](https://github.com/OutlastTrialsStats/totstats-monitor/commit/616d16091afec329ea8ab71f7b8f1fe5fb41fd7b))
+* **main:** release 2.0.1 ([dc081d0](https://github.com/OutlastTrialsStats/totstats-monitor/commit/dc081d04f23a360317c472300bb9293a5bc0abc8))
+* Update Discord integration assets and README visuals ([e1c7c03](https://github.com/OutlastTrialsStats/totstats-monitor/commit/e1c7c0328581547dcd62cd5c7f872331983260ba))
+
+
+### Code Refactoring
+
+* Remove extensive comments and improve log enrichments for Discord presence ([5ba0949](https://github.com/OutlastTrialsStats/totstats-monitor/commit/5ba0949b68e397f8c7606c616ef81b0ed952097c))
+
+
+### Dependencies
+
+* bump googleapis/release-please-action from 4 to 5 ([6d2be37](https://github.com/OutlastTrialsStats/totstats-monitor/commit/6d2be37312bb7aa92bb8a82510d13ee7091eb1e5))
+
 ## [2.0.1](https://github.com/OutlastTrialsStats/totstats-monitor/compare/v2.0.0...v2.0.1) (2026-08-05)
 
 
