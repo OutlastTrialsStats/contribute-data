@@ -34,11 +34,7 @@ from totstats.ui.console_window import ConsoleWindow
 from totstats.ui.first_run import ask_autostart
 from totstats.ui.tray import TrayCallbacks, TrayIcon
 
-#: How often to poll the log while the game is running. Fast enough that state is fresh,
-#: cheap enough to be free: the game writes roughly 700 bytes per second.
 TAIL_INTERVAL = 0.25
-#: How often to look for the game process, in seconds. Measured in wall time, not loop
-#: iterations, so a busy log cannot turn this into a hot loop.
 PROCESS_INTERVAL = 3.0
 IDLE_INTERVAL = 1.0
 
@@ -49,10 +45,7 @@ class App:
         self._stop = threading.Event()
         self._uninstalling = False
 
-        # A dry run must not touch the real installation: no monitor.log entries mixed into a
-        # user's diagnostics, no directory created on a machine that never installed the app.
-        # It writes beside the working directory instead, which is also the only way to see
-        # anything at all from the --noconsole build.
+        # A dry run must not touch the real installation, so it logs beside the working directory.
         log_file: Path | None = None
         if args.dry_run:
             log_file = Path.cwd() / "totstats-dryrun.log"
@@ -70,8 +63,6 @@ class App:
         )
         self.log.rotate_if_large()
 
-        # A dry run must not adopt or overwrite the real installation's settings either, so it
-        # gets an in-memory store that starts from the defaults.
         self.store = SettingsStore(None if args.dry_run else paths.settings_path(), self.log)
         self.settings = self.store.load()
 
@@ -95,16 +86,12 @@ class App:
             name="contribute",
         )
 
-    # -- status --------------------------------------------------------------
-
     def status_text(self) -> str:
         if self.args.dry_run:
             return "Dry run"
         if not self.settings.features.contribute:
             return "Paused"
         return "Monitoring" if self._game.running else "Waiting for game"
-
-    # -- lifecycle -----------------------------------------------------------
 
     def run(self) -> int:
         self.log.info(f"🚀 {APP_NAME} v{__version__} started")
@@ -157,14 +144,10 @@ class App:
         if self._console is not None:
             self._console.open()
 
-    # -- settings ------------------------------------------------------------
-
     def _resolve_autostart(self) -> None:
         """Settle the autostart question once, then keep the registry matching the answer.
 
-        Earlier versions wrote the Run entry on every start without ever asking. Anyone updating
-        from one of those has already lived with autostart, so an existing entry counts as
-        consent and is adopted silently rather than prompted for again.
+        An entry left by an older version counts as consent and is adopted without asking again.
         """
         if self.settings.autostart is None:
             if autostart.migrate_legacy():
@@ -173,8 +156,7 @@ class App:
             elif autostart.is_enabled():
                 self.settings.autostart = True
             elif self.args.silent:
-                # Started in the background with nothing recorded: a dialog here would appear
-                # out of nowhere. Leave it open and ask on the next interactive start.
+                # A dialog out of a background start appears from nowhere; ask on the next one.
                 return
             else:
                 assert self._root is not None
@@ -221,8 +203,6 @@ class App:
         self.log.info("🗑️ Uninstalling…")
         self._stop.set()
 
-    # -- main thread ---------------------------------------------------------
-
     def _main_loop(self) -> None:
         assert self._root is not None
         while not self._stop.is_set():
@@ -233,8 +213,6 @@ class App:
                 self._root.update()
             except tk.TclError:
                 return
-
-    # -- watcher thread ------------------------------------------------------
 
     def _watch_loop(self) -> None:
         next_process_check = 0.0
@@ -270,8 +248,6 @@ class App:
     def _update_tray(self) -> None:
         if self._tray is not None:
             self._tray.set_status(self.status_text())
-
-    # -- shutdown ------------------------------------------------------------
 
     def _shutdown(self, watcher: threading.Thread) -> None:
         self._stop.set()

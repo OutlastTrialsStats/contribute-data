@@ -3,15 +3,10 @@
 Two rules govern everything here:
 
 * **Reading never fails.** A missing, unreadable, truncated or hand-edited file yields defaults
-  and a warning, never an exception. Settings are read during startup, before the tray icon
-  exists, and the build runs with --noconsole — an exception at that point is an invisible
-  crash, and the cost of it is a user whose app silently stopped working.
+  and a warning, never an exception — the build runs with --noconsole, so an exception during
+  startup is an invisible crash.
 * **Writing is atomic.** The file is written beside itself and renamed into place, so a crash or
-  a full disk mid-write leaves the previous settings intact rather than a half-written file that
-  the next start would discard.
-
-`autostart` is deliberately tri-state. None means "never asked", which is what triggers the
-first-run consent prompt; True and False are the user's answer and are honoured from then on.
+  a full disk mid-write leaves the previous settings intact.
 """
 
 from __future__ import annotations
@@ -31,8 +26,8 @@ SCHEMA_VERSION = 1
 @dataclass
 class Features:
     contribute: bool = True
-    #: Reserved for the Discord Rich Presence feature, which is not implemented yet. It is
-    #: written from the start so that enabling it later is a value change, not a format change.
+    #: Reserved for the Discord Rich Presence feature; written from the start so that enabling
+    #: it later is a value change, not a format change.
     presence: bool = False
 
 
@@ -89,8 +84,6 @@ class SettingsStore:
     def path(self) -> Path | None:
         return self._path
 
-    # -- reading -------------------------------------------------------------
-
     def load(self) -> Settings:
         if self._path is None:
             return self.settings
@@ -123,8 +116,6 @@ class SettingsStore:
         except OSError:
             pass
 
-    # -- writing -------------------------------------------------------------
-
     def save(self) -> bool:
         """True when the settings reached disk. An in-memory store always reports True."""
         if self._path is None:
@@ -144,8 +135,6 @@ class SettingsStore:
                 except OSError:
                     pass
                 return False
-
-    # -- logging -------------------------------------------------------------
 
     def _warn(self, message: str) -> None:
         if self._log is not None:

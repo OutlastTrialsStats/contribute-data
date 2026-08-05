@@ -17,7 +17,6 @@ _CREATE_NO_WINDOW = 0x08000000
 
 
 def is_installed_copy() -> bool:
-    """True when this process is the executable inside the install directory."""
     if not paths.is_frozen():
         return False
     try:

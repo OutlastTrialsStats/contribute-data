@@ -13,7 +13,6 @@ APP_PACKAGE = "totstats"
 
 
 def is_frozen() -> bool:
-    """True when running from a PyInstaller bundle."""
     return bool(getattr(sys, "frozen", False))
 
 

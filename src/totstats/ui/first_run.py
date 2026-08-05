@@ -1,9 +1,4 @@
-"""The one question the app asks its user.
-
-Until now autostart was written to the registry on every single start without ever asking. That
-is the kind of thing a user discovers months later in Task Manager, and it is the reason this
-prompt exists: the answer is recorded once and honoured from then on, in both directions.
-"""
+"""The one question the app asks its user."""
 
 from __future__ import annotations
 
@@ -26,8 +21,7 @@ def ask_autostart(root: tk.Tk) -> bool:
     """Ask once whether to enable autostart. Returns the user's answer; defaults to No.
 
     The root window is withdrawn, so without the topmost flag the dialog can open behind
-    whatever the user is currently looking at — with no taskbar button to find it by, that
-    reads as a frozen app.
+    whatever the user is looking at — with no taskbar button to find it by.
     """
     try:
         root.attributes("-topmost", True)

@@ -1,10 +1,6 @@
 # TOTStatsMonitor ships as a PyInstaller executable, never as a wheel on an index. The metadata
-# below exists for one reason: `pip install -e .` puts the src/ layout on the import path so that
-# `python -m totstats` works from any directory during development. The shipped build does not go
-# through it — build.py passes `--paths src` to PyInstaller directly.
-#
-# The single source of truth for the version is src/totstats/__init__.py (kept in sync with
-# .release-please-manifest.json by release-please; build.py fails the build on drift).
+# below exists so that `pip install -e .` puts the src/ layout on the import path during
+# development. The shipped build does not go through it — build.py passes `--paths src` directly.
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -30,15 +26,7 @@ src = ["src", "tools"]
 extend-exclude = ["build", "dist"]
 
 [tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "UP",   # pyupgrade
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-]
+select = ["E", "W", "F", "I", "UP", "B", "C4"]
 ignore = [
     "B008",  # function call in default argument — we use it for injected clocks/factories
 ]

@@ -48,12 +48,9 @@ class ContributeService:
         self._pending: list[str] = []
         self.stats = ContributeStats()
 
-        #: Mirrors the user's setting. Checked per line rather than by unsubscribing, so the
-        #: tray toggle takes effect immediately instead of at the next start. Plain attribute
-        #: assignment on a bool needs no lock; the watcher thread only ever reads it.
+        #: Checked per line rather than by unsubscribing, so the tray toggle takes effect at
+        #: once. Needs no lock: the watcher thread only ever reads it.
         self.enabled = True
-
-    # -- lifecycle -----------------------------------------------------------
 
     def start(self) -> None:
         if self._worker is not None:
@@ -75,8 +72,6 @@ class ContributeService:
         worker.join(timeout)
         if worker.is_alive():
             self._log.warning("contribute worker did not stop in time")
-
-    # -- log sink ------------------------------------------------------------
 
     def on_rotate(self) -> None:
         """A new log file means a new game session: everyone is worth reporting again."""
@@ -125,8 +120,6 @@ class ContributeService:
         except queue.Full:
             self.stats.dropped += 1
             self._log.warning(f"contribute queue full, dropped {profile_id[:8]}…")
-
-    # -- worker --------------------------------------------------------------
 
     def _run(self) -> None:
         while True:

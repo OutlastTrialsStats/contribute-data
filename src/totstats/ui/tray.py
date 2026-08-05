@@ -79,8 +79,6 @@ class TrayIcon:
             pystray.MenuItem("Exit", self._on_exit),
         )
 
-    # -- menu actions (tray thread) ------------------------------------------
-
     def _on_console(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.open_console)
 
@@ -95,8 +93,6 @@ class TrayIcon:
 
     def _on_exit(self, _icon: object, _item: object) -> None:
         self._ui.post(self._callbacks.quit)
-
-    # -- lifecycle -----------------------------------------------------------
 
     def run(self) -> None:
         """Blocking; call on a dedicated thread."""

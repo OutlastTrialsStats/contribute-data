@@ -16,11 +16,7 @@ from pathlib import Path
 
 
 def _make_stdout_unicode_safe() -> None:
-    """Stop a legacy console codepage from swallowing output.
-
-    Log messages carry emoji. On a cp1252 console every print() of one raises
-    UnicodeEncodeError, which would silently discard the entire console output.
-    """
+    """Log messages carry emoji; on a cp1252 console every one would raise UnicodeEncodeError."""
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is None:
@@ -76,13 +72,9 @@ class AppLog:
         if echo_stdout:
             _make_stdout_unicode_safe()
 
-    # -- configuration -------------------------------------------------------
-
     def set_level(self, level: str) -> None:
         with self._lock:
             self._level = _ORDER.get(level, _ORDER[INFO])
-
-    # -- writing -------------------------------------------------------------
 
     def debug(self, message: str) -> None:
         self._write(DEBUG, message)
@@ -128,8 +120,6 @@ class AppLog:
                     # broken sink cannot cost an I/O attempt on every single log line.
                     with self._lock:
                         self._file_broken = True
-
-    # -- reading -------------------------------------------------------------
 
     @property
     def last_seq(self) -> int:

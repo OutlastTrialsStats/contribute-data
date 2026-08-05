@@ -1,9 +1,8 @@
 """Windows autostart via the HKCU Run key.
 
-The value name is load-bearing: an installation out in the wild already carries one, and simply
-writing a differently named value would leave the old entry behind and start the app twice. The
-name is being unified on APP_NAME, so anything written under an older name has to be migrated
-rather than ignored — see migrate_legacy().
+The value name is load-bearing: installations out in the wild carry an older one, and writing a
+differently named value would leave the old entry behind and start the app twice. See
+migrate_legacy().
 """
 
 from __future__ import annotations
@@ -70,16 +69,14 @@ def is_enabled() -> bool:
 
 
 def legacy_names_present() -> tuple[str, ...]:
-    """Value names from earlier releases that are still in the Run key."""
     return tuple(name for name in LEGACY_VALUE_NAMES if _has_value(name))
 
 
 def migrate_legacy() -> bool:
-    """Adopt an entry written by an earlier release under its old name.
+    """Adopt an entry written by an earlier release under its old name. True when one was found.
 
-    True when one was found. The user already consented to autostart back then, so the entry is
-    rewritten under the current name and the old one removed — asking again would be rude, and
-    leaving it would launch two copies at logon.
+    The entry is rewritten under the current name and the old one removed; leaving it would
+    launch two copies at logon.
     """
     found = legacy_names_present()
     if not found:
@@ -102,10 +99,9 @@ def enable() -> bool:
 
 
 def disable() -> bool:
-    """Remove every entry we may have written, current or legacy.
+    """Remove every entry we may have written, current or legacy. True if at least one was.
 
-    True if at least one was removed. Uninstall and the tray toggle both rely on this leaving
-    nothing behind, so it must not stop at the current name.
+    Uninstall relies on this leaving nothing behind, so it must not stop at the current name.
     """
     removed = _delete_value(VALUE_NAME)
     for name in LEGACY_VALUE_NAMES:

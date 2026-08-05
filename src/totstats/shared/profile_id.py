@@ -1,8 +1,8 @@
 """Resolves the local player's profile UUID from the game log.
 
-Five independent sources carry it. The old implementation used only the authentication line,
-which meant that if the app started after login — the normal case for a mid-session launch, and
-guaranteed when replay is capped — it silently never contributed anything.
+Five independent sources carry it, because the authentication line alone is missing whenever the
+app starts after login — the normal case for a mid-session launch, and guaranteed once replay is
+capped.
 
 Sources in resolution order:
 

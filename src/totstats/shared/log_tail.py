@@ -36,7 +36,6 @@ _BOM = b"\xef\xbb\xbf"
 @dataclass(frozen=True)
 class LogLine:
     raw: str
-    """The complete line without its trailing newline."""
 
     body: str
     """The line with the [timestamp][frame] prefix stripped; equals raw when there is none."""
@@ -111,8 +110,6 @@ class LogTailer:
         self._replaying = False
         self._missing_logged = False
 
-    # -- subscription --------------------------------------------------------
-
     def subscribe(
         self,
         sink: LineSink,
@@ -143,8 +140,6 @@ class LogTailer:
             merged.extend(sub.needles)
         self._union_needles = tuple(dict.fromkeys(merged))
 
-    # -- state ---------------------------------------------------------------
-
     @property
     def current_file(self) -> Path | None:
         return self._path
@@ -154,7 +149,6 @@ class LogTailer:
         return self._replaying
 
     def reset(self) -> None:
-        """Forget the current file and offset. Called when the game exits."""
         self._path = None
         self._identity = None
         self._offset = 0
@@ -165,8 +159,6 @@ class LogTailer:
         self._missing_logged = False
 
     close = reset
-
-    # -- polling -------------------------------------------------------------
 
     def poll(self) -> int:
         """Read whatever is new and dispatch it. Returns the number of lines dispatched."""
@@ -312,8 +304,6 @@ class LogTailer:
             hook()
         except Exception as exc:  # noqa: BLE001
             self._warn(f"subscriber {sub.name} {what} failed: {exc}")
-
-    # -- logging helpers -----------------------------------------------------
 
     def _info(self, message: str) -> None:
         if self._log is not None:

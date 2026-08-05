@@ -14,8 +14,8 @@ MANIFEST_FILE = ROOT / ".release-please-manifest.json"
 def get_version():
     """The version from the package, cross-checked against the release-please manifest.
 
-    release-please bumps both, so a mismatch means a hand edit slipped through. Failing here
-    keeps the executable's VERSIONINFO from disagreeing with the release tag.
+    release-please bumps both, so a mismatch means a hand edit slipped through and the
+    executable's VERSIONINFO would disagree with the release tag.
     """
     source = VERSION_FILE.read_text(encoding="utf-8")
     match = re.search(r'^__version__ = "([^"]+)"', source, re.M)
@@ -99,7 +99,6 @@ def main():
     version = get_version()
     generate_version_info(version)
 
-    # Write version to GITHUB_OUTPUT if running in CI
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a") as f:

@@ -25,8 +25,8 @@ class ContributeResult:
 
 
 class ContributeApi:
-    """Reports one profile id per call. Uses a pooled session; the endpoint is called in bursts
-    whenever a lobby fills up, and a fresh TCP and TLS handshake per player is pure waste."""
+    """Reports one profile id per call, over a pooled session: the endpoint is called in bursts
+    whenever a lobby fills up, and a handshake per player would be pure waste."""
 
     def __init__(
         self,
