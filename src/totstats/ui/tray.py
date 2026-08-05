@@ -14,7 +14,11 @@ import pystray
 from PIL import Image, ImageDraw
 
 from totstats import APP_NAME
+from totstats.shared import windows
 from totstats.shared.ui_queue import UiQueue
+
+#: Sampled from the monogram in icon.ico, for the placeholder drawn when that file is missing.
+_BRAND = (203, 202, 153, 255)
 
 
 @dataclass(frozen=True)
@@ -32,29 +36,55 @@ class TrayCallbacks:
 
 
 def load_icon_image(icon_path: Path) -> Image.Image:
+    """The icon as a PIL image. A missing icon.ico is a packaging fault, not a user situation,
+    so the placeholder only has to be inoffensive at 16 pixels — hence no glyph and no text."""
     if icon_path.exists():
         try:
             return Image.open(icon_path)
         except OSError:
             pass
-    size = 64
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.ellipse([4, 4, size - 4, size - 4], fill=(180, 180, 180, 255))
-    draw.text((size // 2 - 8, size // 2 - 10), "OT", fill=(255, 255, 255, 255))
+    image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rounded_rectangle([4, 4, 60, 60], radius=12, fill=_BRAND)
     return image
+
+
+class _SizedIcon(pystray.Icon):
+    """Loads the tray icon at the size the notification area actually draws.
+
+    pystray asks LoadImage for LR_DEFAULTSIZE, which resolves to SM_CXICON — the 32px desktop
+    icon, not the 16px SM_CXSMICON the tray uses — and the shell then squeezes the result down
+    itself. Handing pystray a smaller image does not help: LR_DEFAULTSIZE scales a 16px source
+    up to 32 first. Reading the .ico at the size we want skips both resamples.
+
+    The size is resolved per call rather than once, so the icon stays correct after a display
+    change: pystray re-runs _show(), and with it this method, on WM_DISPLAYCHANGE.
+    """
+
+    #: Assigned after construction. None falls back to pystray's own loading.
+    _icon_file: Path | None = None
+
+    def _assert_icon_handle(self) -> None:
+        if self._icon_handle:
+            return
+        if self._icon_file is not None:
+            handle = windows.load_icon(self._icon_file, windows.small_icon_size())
+            if handle is not None:
+                self._icon_handle = handle
+                return
+        super()._assert_icon_handle()
 
 
 class TrayIcon:
     def __init__(self, ui: UiQueue, callbacks: TrayCallbacks, icon_path: Path) -> None:
         self._ui = ui
         self._callbacks = callbacks
-        self._icon = pystray.Icon(
+        self._icon = _SizedIcon(
             APP_NAME,
             load_icon_image(icon_path),
             f"{APP_NAME} - {callbacks.status_text()}",
             self._build_menu(),
         )
+        self._icon._icon_file = icon_path if icon_path.exists() else None
 
     def _build_menu(self) -> pystray.Menu:
         return pystray.Menu(

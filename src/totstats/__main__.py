@@ -43,7 +43,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
 
-    from totstats.shared import installer
+    from totstats.shared import installer, windows
+
+    # Before anything can create a window, otherwise Windows stretches the process' output.
+    windows.enable_dpi_awareness()
 
     if not (args.no_install or args.dry_run) and installer.ensure_installed():
         return 0
